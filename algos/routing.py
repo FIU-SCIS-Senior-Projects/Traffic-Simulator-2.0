@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 
 from math import ceil, log2
-from typing import List, Set
+from typing import List, Set, FrozenSet
 
 
 class NonSquareMatrix(Exception):
@@ -100,28 +100,28 @@ class Routing(object):
 
         return set(nbhd.keys())
 
-    def _randomized_HDS_gen(self):
+    def _randomized_HDS_gen(self) -> List[Set[FrozenSet[int]]]:
         V = frozenset(np.arange(self._n_vertices))
 
         # @TODO: check that this is a uniform permutation
         pi = np.random.permutation(self._n_vertices)
         U = np.random.uniform(.5, 1)
         h = int(log2(self._diam))
-        H = [None] * (h + 1)
+        H = [None] * (h + 1)  # type: List[Set[FrozenSet[int]]]
 
         H[h] = set()
         H[h].add(V)
 
-        working_dict = {}
+        vertex_dict = {}
         for v in V:
-            working_dict[v] = Vertex(None, None, True)
+            vertex_dict[v] = Vertex(None, None, True)
 
         for i in reversed(range(0, h)):
             H[i] = set()
 
             for C in H[i+1]:
                 for v in C:
-                    ver = working_dict[v]
+                    ver = vertex_dict[v]
                     ver.cluster = set()
                     ver.flag = True
 
@@ -135,15 +135,15 @@ class Routing(object):
                     assert(ver.rep is not None)
 
                 for v in C:
-                    v_ver = working_dict[v]
+                    v_ver = vertex_dict[v]
                     for u in C:
-                        u_ver = working_dict[u]
+                        u_ver = vertex_dict[u]
                         if u_ver.flag and u_ver.rep == v:
                             u_ver.flag = False
                             v_ver.cluster.add(u)
 
                 for v in C:
-                    ver = working_dict[v]
+                    ver = vertex_dict[v]
                     if v_ver.cluster:
                         H[i].add(frozenset(ver.cluster))
 
