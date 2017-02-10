@@ -87,7 +87,7 @@ class Routing(object):
         self._graph = nx.MultiDiGraph(self._mat)
         self._diam = self._graph_diameter(self._graph)
 
-    def r_neighborhood(self, v, r: int) -> Set[int]:
+    def r_neighborhood(self, v, r: float) -> Set[int]:
         if self._graph is None:
             raise GraphNotSet
 
@@ -100,12 +100,18 @@ class Routing(object):
 
         return set(nbhd.keys())
 
-    def _randomized_HDS_gen(self) -> List[Set[FrozenSet[int]]]:
+    def _randomized_HDS_gen(self, pi=None, U=None) -> List[Set[FrozenSet[int]]]:
         V = frozenset(np.arange(self._n_vertices))
 
-        # @TODO: check that this is a uniform permutation
-        pi = np.random.permutation(self._n_vertices)
-        U = np.random.uniform(.5, 1)
+        if not pi:
+            # @TODO: check that this is a uniform permutation
+            pi = np.random.permutation(self._n_vertices)
+        # print("Random permutation: {}".format(pi))
+
+        if not U:
+            U = np.random.uniform(.5, 1)
+        # print("Random num: {}".format(U))
+
         h = int(log2(self._diam))
         H = [None] * (h + 1)  # type: List[Set[FrozenSet[int]]]
 
@@ -121,18 +127,20 @@ class Routing(object):
 
             for C in H[i+1]:
                 for v in C:
-                    ver = vertex_dict[v]
-                    ver.cluster = set()
-                    ver.flag = True
+                    v_ver = vertex_dict[v]
+                    v_ver.cluster = set()
+                    v_ver.flag = True
 
-                    ver.rep = None
+                    v_ver.rep = None
                     for j in pi:
-                        if j in (C & (self.r_neighborhood(v, U * 2**(i-1)))):
-                            ver.rep = j
+                        # @TODO: think about doing memoization for speedup
+                        v_neighborhood = self.r_neighborhood(v, U * 2**(i-1))
+                        if j in (C & v_neighborhood):
+                            v_ver.rep = j
                             break
 
                     # Something is wrong if this triggers
-                    assert(ver.rep is not None)
+                    assert(v_ver.rep is not None)
 
                 for v in C:
                     v_ver = vertex_dict[v]
@@ -143,9 +151,9 @@ class Routing(object):
                             v_ver.cluster.add(u)
 
                 for v in C:
-                    ver = vertex_dict[v]
+                    v_ver = vertex_dict[v]
                     if v_ver.cluster:
-                        H[i].add(frozenset(ver.cluster))
+                        H[i].add(frozenset(v_ver.cluster))
 
         return H
 
