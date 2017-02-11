@@ -22,6 +22,7 @@ class VertexNonExistent(Exception):
 
 
 class Vertex(object):
+    # Trying to reduce object size by using __slots__
     __slots__ = ['rep', 'cluster', 'flag']
 
     def __init__(self, rep, cluster, flag):
@@ -35,6 +36,11 @@ class Routing(object):
         self.set_graph(M)
 
     def _graph_diameter(self, G):
+        """Compute the diameter of a given graph.
+
+        NOTE:
+            Given graph MUST be STRONGLY connected.
+        """
         # @TODO: choose the better algorithm depending on the density of
         # the graph
         return nx.floyd_warshall_numpy(G).max()
@@ -70,6 +76,8 @@ class Routing(object):
         return np_mat
 
     def set_graph(self, M: List[List[float]]) -> None:
+        """Set the adjacency matrix that the routing algorithms will work on.
+        """
         if M is None:
             self._mat = None
             self._n_vertices = None
@@ -87,7 +95,9 @@ class Routing(object):
         self._graph = nx.MultiDiGraph(self._mat)
         self._diam = self._graph_diameter(self._graph)
 
-    def r_neighborhood(self, v, r: float) -> Set[int]:
+    def _r_neighborhood(self, v, r: float) -> Set[int]:
+        """Get the set of vertices that are within r distance of v.
+        """
         if self._graph is None:
             raise GraphNotSet
 
@@ -100,7 +110,12 @@ class Routing(object):
 
         return set(nbhd.keys())
 
-    def _randomized_HDS_gen(self, pi=None, U=None) -> List[Set[FrozenSet[int]]]:
+    def _randomized_HDS_gen(self,
+                            pi=None,
+                            U=None) -> List[Set[FrozenSet[int]]]:
+        """Generate a HDS based on given or randomly generated paramters.
+        Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
+        """
         V = frozenset(np.arange(self._n_vertices))
 
         if not pi:
@@ -134,7 +149,7 @@ class Routing(object):
                     v_ver.rep = None
                     for j in pi:
                         # @TODO: think about doing memoization for speedup
-                        v_neighborhood = self.r_neighborhood(v, U * 2**(i-1))
+                        v_neighborhood = self._r_neighborhood(v, U * 2**(i-1))
                         if j in (C & v_neighborhood):
                             v_ver.rep = j
                             break
@@ -158,6 +173,8 @@ class Routing(object):
         return H
 
     def get_path(self, algo, s, t: int) -> List[int]:
+        """Get optimal path from s to t depending on the chosen algorithm.
+        """
         if self._graph is None:
             raise GraphNotSet
 
