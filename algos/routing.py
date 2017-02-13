@@ -2,7 +2,11 @@ import numpy as np
 import networkx as nx
 
 from math import ceil, log2
-from typing import List, Set
+from typing import List, Set, FrozenSet
+
+
+class NonSquareMatrix(Exception):
+    pass
 
 
 class GraphNotSet(Exception):
@@ -17,51 +21,83 @@ class VertexNonExistent(Exception):
     pass
 
 
+class Vertex(object):
+    # Trying to reduce object size by using __slots__
+    __slots__ = ['rep', 'cluster', 'flag']
+
+    def __init__(self, rep, cluster, flag):
+        self.rep = rep
+        self.cluster = cluster
+        self.flag = flag
+
+
 class Routing(object):
     def __init__(self, M: List[List[float]] = None) -> None:
         self.set_graph(M)
 
     def _graph_diameter(self, G):
+        """Compute the diameter of a given graph.
+
+        NOTE:
+            Given graph MUST be STRONGLY connected.
+        """
         # @TODO: choose the better algorithm depending on the density of
         # the graph
         return nx.floyd_warshall_numpy(G).max()
 
-    def set_graph(self, M: List[List[float]]) -> None:
-        if M is None:
-            self._mat = None
-            self._graph = None
-            return
+    def _convert_power_of_2_diameter(self, np_mat):
+        """Convert any adjacency matrix which denotes some graph G = (V, E, w)
+        into an adjacency matrix which denotes some graph G' = (V, E, w_c) with
+        diameter equal to some power of 2.
 
-        adj_mat = np.matrix(M)
+        NOTE:
+            The given adjacency matrix MUST denote a STRONGLY connected graph.
 
-        # ======== Turn graph into graph with diameter 2^h for some h =========
-
-        # Convert all edges with weight 0 to infinity. 0 weight edge delimits
-        # that there does not exist an edge between the two vertices in the
-        # adjacency matrix.
-        adj_mat[adj_mat == 0.0] = np.inf
-        G_min_edge = adj_mat.min()
+        """
+        # Negative weights delimit a non-existent edge between two nodes, which
+        # is equivalent to edge weight of infinity.
+        np_mat[np_mat <= 0.0] = np.inf  # @TODO: Should weight 0.0 be allowed?
+        G_min_edge = np_mat.min()
 
         epsilon = np.float(0.01)
         # @TODO: check to see if there's a faster way of doing this
         vec_func = np.vectorize(lambda x: ((1+epsilon) / G_min_edge) * x)
-        adj_mat = vec_func(adj_mat)
+        np_mat = vec_func(np_mat)
 
-        G_p = nx.MultiDiGraph(adj_mat)
+        G_p = nx.MultiDiGraph(np_mat)
         G_p_diam = self._graph_diameter(G_p)
 
         # @TODO: check to see if there's a faster way of doing this
         vec_func = np.vectorize(
             lambda x: ((2 ** ceil(log2(G_p_diam))) / G_p_diam) * x
         )
-        adj_mat = vec_func(adj_mat)
-        # =====================================================================
+        np_mat = vec_func(np_mat)
 
-        self._mat = adj_mat
-        self._graph = nx.MultiDiGraph(adj_mat)
+        return np_mat
+
+    def set_graph(self, M: List[List[float]]) -> None:
+        """Set the adjacency matrix that the routing algorithms will work on.
+        """
+        if M is None:
+            self._mat = None
+            self._n_vertices = None
+            self._graph = None
+            self._diam = None
+            return
+
+        adj_mat = np.matrix(M)
+
+        if adj_mat.shape[0] != adj_mat.shape[1]:
+            raise NonSquareMatrix
+
+        self._mat = self._convert_power_of_2_diameter(adj_mat)
+        self._n_vertices = self._mat.shape[0]
+        self._graph = nx.MultiDiGraph(self._mat)
         self._diam = self._graph_diameter(self._graph)
 
-    def r_neighborhood(self, v, r: int) -> Set[int]:
+    def _r_neighborhood(self, v, r: float) -> Set[int]:
+        """Get the set of vertices that are within r distance of v.
+        """
         if self._graph is None:
             raise GraphNotSet
 
@@ -74,7 +110,71 @@ class Routing(object):
 
         return set(nbhd.keys())
 
+    def _randomized_HDS_gen(self,
+                            pi=None,
+                            U=None) -> List[Set[FrozenSet[int]]]:
+        """Generate a HDS based on given or randomly generated paramters.
+        Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
+        """
+        V = frozenset(np.arange(self._n_vertices))
+
+        if not pi:
+            # @TODO: check that this is a uniform permutation
+            pi = np.random.permutation(self._n_vertices)
+        # print("Random permutation: {}".format(pi))
+
+        if not U:
+            U = np.random.uniform(.5, 1)
+        # print("Random num: {}".format(U))
+
+        h = int(log2(self._diam))
+        H = [None] * (h + 1)  # type: List[Set[FrozenSet[int]]]
+
+        H[h] = set()
+        H[h].add(V)
+
+        vertex_dict = {}
+        for v in V:
+            vertex_dict[v] = Vertex(None, None, True)
+
+        for i in reversed(range(0, h)):
+            H[i] = set()
+
+            for C in H[i+1]:
+                for v in C:
+                    v_ver = vertex_dict[v]
+                    v_ver.cluster = set()
+                    v_ver.flag = True
+
+                    v_ver.rep = None
+                    for j in pi:
+                        # @TODO: think about doing memoization for speedup
+                        v_neighborhood = self._r_neighborhood(v, U * 2**(i-1))
+                        if j in (C & v_neighborhood):
+                            v_ver.rep = j
+                            break
+
+                    # Something is wrong if this triggers
+                    assert(v_ver.rep is not None)
+
+                for v in C:
+                    v_ver = vertex_dict[v]
+                    for u in C:
+                        u_ver = vertex_dict[u]
+                        if u_ver.flag and u_ver.rep == v:
+                            u_ver.flag = False
+                            v_ver.cluster.add(u)
+
+                for v in C:
+                    v_ver = vertex_dict[v]
+                    if v_ver.cluster:
+                        H[i].add(frozenset(v_ver.cluster))
+
+        return H
+
     def get_path(self, algo, s, t: int) -> List[int]:
+        """Get optimal path from s to t depending on the chosen algorithm.
+        """
         if self._graph is None:
             raise GraphNotSet
 
