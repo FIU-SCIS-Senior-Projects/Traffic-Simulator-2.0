@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 
 from math import ceil, log2
-from typing import List, Set, FrozenSet
+from typing import Any, List, Set, FrozenSet, NamedTuple
 
 
 class NonSquareMatrix(Exception):
@@ -21,21 +21,13 @@ class VertexNonExistent(Exception):
     pass
 
 
-class Vertex(object):
-    # Trying to reduce object size by using __slots__
-    __slots__ = ['rep', 'cluster', 'flag']
-
-    def __init__(self, rep, cluster, flag):
-        self.rep = rep
-        self.cluster = cluster
-        self.flag = flag
+class NonOverlappingEndVertices(Exception):
+    pass
 
 
-class Routing(object):
-    def __init__(self, M: List[List[float]] = None) -> None:
-        self.set_graph(M)
-
-    def _graph_diameter(self, G):
+class GraphUtils:
+    @staticmethod
+    def graph_diameter(G):
         """Compute the diameter of a given graph.
 
         NOTE:
@@ -44,6 +36,38 @@ class Routing(object):
         # @TODO: choose the better algorithm depending on the density of
         # the graph
         return nx.floyd_warshall_numpy(G).max()
+
+    @staticmethod
+    def merge(path1, path2: List[Any]) -> List[Any]:
+        """Merge two paths that have overlapping vertices.
+
+        path1: [v_1, v_2, ... , v_k]
+                                ||
+                               [v_k, v_k+1, ...] : path2
+        """
+        if path1[-1] != path2[0]:
+            raise NonOverlappingEndVertices
+
+        return path1[:-1] + path2[1:]
+
+
+class GraphDiam2h(nx.MultiDiGraph):
+    def __init__(self, M: List[List[float]]) -> None:
+        if M is None:
+            raise Exception("Empty matrix provided")
+
+        adj_mat = np.matrix(M)
+
+        if adj_mat.shape[0] != adj_mat.shape[1]:
+            raise NonSquareMatrix
+
+        self._mat = self._convert_power_of_2_diameter(adj_mat)
+        # self._n_vertices = self._mat.shape[0]
+
+        super(GraphDiam2h, self).__init__(self._mat)
+
+        # self._graph = nx.MultiDiGraph(self._mat)
+        self._diam = GraphUtils.graph_diameter(self)
 
     def _convert_power_of_2_diameter(self, np_mat):
         """Convert any adjacency matrix which denotes some graph G = (V, E, w)
@@ -65,7 +89,7 @@ class Routing(object):
         np_mat = vec_func(np_mat)
 
         G_p = nx.MultiDiGraph(np_mat)
-        G_p_diam = self._graph_diameter(G_p)
+        G_p_diam = GraphUtils.graph_diameter(G_p)
 
         # @TODO: check to see if there's a faster way of doing this
         vec_func = np.vectorize(
@@ -75,73 +99,80 @@ class Routing(object):
 
         return np_mat
 
-    def set_graph(self, M: List[List[float]]) -> None:
-        """Set the adjacency matrix that the routing algorithms will work on.
-        """
-        if M is None:
-            self._mat = None
-            self._n_vertices = None
-            self._graph = None
-            self._diam = None
-            return
-
-        adj_mat = np.matrix(M)
-
-        if adj_mat.shape[0] != adj_mat.shape[1]:
-            raise NonSquareMatrix
-
-        self._mat = self._convert_power_of_2_diameter(adj_mat)
-        self._n_vertices = self._mat.shape[0]
-        self._graph = nx.MultiDiGraph(self._mat)
-        self._diam = self._graph_diameter(self._graph)
-
-    def _r_neighborhood(self, v, r: float) -> Set[int]:
+    def r_neighborhood(self, v, r: float) -> Set[int]:
         """Get the set of vertices that are within r distance of v.
         """
-        if self._graph is None:
-            raise GraphNotSet
-
         try:
             nbhd = nx.single_source_dijkstra_path_length(
-                self._graph, v, cutoff=r
+                self, v, cutoff=r
             )
         except KeyError:
             raise VertexNonExistent
 
         return set(nbhd.keys())
 
-    def _randomized_HDS_gen(self,
-                            pi=None,
-                            U=None) -> List[Set[FrozenSet[int]]]:
+
+class Vertex(object):
+    # Trying to reduce object size by using __slots__
+    __slots__ = ['rep', 'cluster', 'flag']
+
+    def __init__(self, rep, cluster, flag):
+        self.rep = rep
+        self.cluster = cluster
+        self.flag = flag
+
+
+# For sets that have a representative member
+RepSet = NamedTuple("RepSet", [('set', FrozenSet), ('rep', int)])
+
+
+class Routing(object):
+    def __init__(self, M: List[List[float]] = None) -> None:
+        self.set_graph(M)
+
+    def set_graph(self, M: List[List[float]]) -> None:
+        """Set the adjacency matrix that the routing algorithms will work on.
+        """
+        if M is None:
+            return
+
+        self._graph = GraphDiam2h(M)
+
+    @staticmethod
+    def randomized_HDS_gen(G,
+                           pi=None,
+                           U=None) -> List[FrozenSet[RepSet]]:
         """Generate a HDS based on given or randomly generated paramters.
         Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
         """
-        V = frozenset(np.arange(self._n_vertices))
+        num_vertices = len(G.nodes())
+        V = frozenset(np.arange(num_vertices))
 
         if not pi:
             # @TODO: check that this is a uniform permutation
-            pi = np.random.permutation(self._n_vertices)
+            pi = np.random.permutation(num_vertices)
         # print("Random permutation: {}".format(pi))
 
         if not U:
             U = np.random.uniform(.5, 1)
         # print("Random num: {}".format(U))
 
-        h = int(log2(self._diam))
-        H = [None] * (h + 1)  # type: List[Set[FrozenSet[int]]]
+        h = int(log2(G._diam))
+        H = [None] * (h + 1)  # type: List[FrozenSet[RepSet]]
 
-        H[h] = set()
-        H[h].add(V)
+        # @TODO: what's the representative vertex of V?
+        H[h] = frozenset([RepSet(V, None)])
 
         vertex_dict = {}
         for v in V:
             vertex_dict[v] = Vertex(None, None, True)
 
         for i in reversed(range(0, h)):
-            H[i] = set()
+            H_i = set()
 
             for C in H[i+1]:
-                for v in C:
+                cluster_set = C.set
+                for v in cluster_set:
                     v_ver = vertex_dict[v]
                     v_ver.cluster = set()
                     v_ver.flag = True
@@ -149,28 +180,51 @@ class Routing(object):
                     v_ver.rep = None
                     for j in pi:
                         # @TODO: think about doing memoization for speedup
-                        v_neighborhood = self._r_neighborhood(v, U * 2**(i-1))
-                        if j in (C & v_neighborhood):
+                        v_neighborhood = G.r_neighborhood(v, U * 2**(i-1))
+                        if j in (cluster_set & v_neighborhood):
                             v_ver.rep = j
                             break
 
                     # Something is wrong if this triggers
                     assert(v_ver.rep is not None)
 
-                for v in C:
+                for v in cluster_set:
                     v_ver = vertex_dict[v]
-                    for u in C:
+                    for u in cluster_set:
                         u_ver = vertex_dict[u]
                         if u_ver.flag and u_ver.rep == v:
                             u_ver.flag = False
                             v_ver.cluster.add(u)
 
-                for v in C:
+                for v in cluster_set:
                     v_ver = vertex_dict[v]
                     if v_ver.cluster:
-                        H[i].add(frozenset(v_ver.cluster))
+                        H_i.add(RepSet(frozenset(v_ver.cluster), v_ver.rep))
+
+            H[i] = frozenset(H_i)
 
         return H
+
+    @staticmethod
+    def hds_to_hdt(hds: List[FrozenSet[RepSet]]):
+        G = nx.Graph()
+
+        for i in reversed(range(0, len(hds) - 1)):
+            for C in hds[i]:
+                node = (C, i)
+                G.add_node(node)
+
+                added_parent = False
+                for Cp in hds[i+1]:
+                    parent_node = (Cp, i+1)
+                    if C.set <= Cp.set:
+                        G.add_edge(node, parent_node)
+                        added_parent = True
+                        break
+
+                assert(added_parent is True)
+
+        return G
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
