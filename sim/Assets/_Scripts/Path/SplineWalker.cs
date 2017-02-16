@@ -19,6 +19,10 @@ public class SplineWalker : MonoBehaviour
 
     public bool GoingForward = true;
 
+    public float LaneMultiplier;
+
+    public Vector3 PositionOffset;
+
     /// <summary>
     /// Each step of the path
     /// </summary>
@@ -53,7 +57,10 @@ public class SplineWalker : MonoBehaviour
             }
         }
 
-        Vector3 position = Spline.GetPoint(Progress);
+
+        Debug.DrawRay(transform.position, Vector3.Cross(CurrentDirection, new Vector3(0,0,1)), Color.green);
+        PositionOffset = Vector3.Cross(CurrentDirection, new Vector3(0, 0, 1)) * LaneMultiplier;
+        Vector3 position = Spline.GetPoint(Progress) + PositionOffset;
         position = new Vector3(position.x, position.y, 0); // for 2D
         transform.position = position;
 

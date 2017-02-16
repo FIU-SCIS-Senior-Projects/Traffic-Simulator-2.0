@@ -11,15 +11,17 @@ using UnityEngine;
 public class CarAI : MonoBehaviour
 {
     public float MaxSpeed;
-    public float Acceleration;
+    public float SlowSpeed;
     public NodeMap Map;
+    public Sensor FrontSensor;
+    public Sensor RearSensor;
 
-    private List<Node> Path;
+    public List<Node> Path;
     private SplineWalker Walker;
     private Node[] AvailableNodes;
     private Edge[] AvailableEdges;
-    private Node NextNode;
-    private Node CurrentNode;
+    public Node NextNode;
+    public Node CurrentNode;
     private int CurrentPathIndex;
 
     private List<Node> potentialNextNodes = new List<Node>();
@@ -39,7 +41,7 @@ public class CarAI : MonoBehaviour
 
         // This is hardcoded temporarily.  In future will get a duration based on our speed and the arclength of the bezier spline (see bezier spline class)
         Walker.Duration = MaxSpeed;
-        GetPath(10);
+        GetPath(20);
 
         SetNextEdge(CurrentPathIndex);
         CurrentPathIndex++;
@@ -61,24 +63,49 @@ public class CarAI : MonoBehaviour
 
         if(GoingForward)
         {
+            Walker.LaneMultiplier = 0.15f;
             if (Walker.Progress == 1f)
             {
                 SetNextEdge(CurrentPathIndex);
+                
                 CurrentPathIndex++;
             }
         }
         else
         {
+            Walker.LaneMultiplier = -0.15f;
             if (Walker.Progress == 0f)
             {
                 SetNextEdge(CurrentPathIndex);
+                
                 CurrentPathIndex++;
             }
         }
 
+        CheckFront();
+    }
 
+    private void CheckFront()
+    {
+        if(FrontSensor.SensorTrigger)
+        {
+            Walker.Duration = SlowSpeed;
+        }
+        else
+        {
+            Walker.Duration = MaxSpeed;
+        }
+    }
 
-
+    private void CheckRear()
+    {
+        if (RearSensor.SensorTrigger)
+        {
+            if(!FrontSensor.SensorTrigger)
+            {
+                Walker.Duration = MaxSpeed;
+            }
+        }
     }
 
     /// <summary>
@@ -144,24 +171,24 @@ public class CarAI : MonoBehaviour
     /// <returns></returns>
     protected Edge GetNextEdge()
     {
-        AvailableEdges = CurrentNode.GetComponentsInChildren<Edge>();
+        AvailableEdges = NextNode.GetComponentsInChildren<Edge>();
         List<Edge> potentialNextEdges = new List<Edge>();
         int randomEdgeIndex = 0;
 
 
         foreach (Edge edge in AvailableEdges)
         {
-            if (edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode)
+            if ((edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode) && (edge.Nodes[0] == CurrentNode || edge.Nodes[1] == CurrentNode))
             {
                 potentialNextEdges.Add(edge);
             }
         }
 
-        AvailableEdges = NextNode.GetComponentsInChildren<Edge>();
+        AvailableEdges = CurrentNode.GetComponentsInChildren<Edge>();
 
         foreach (Edge edge in AvailableEdges)
         {
-            if (edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode)
+            if ((edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode) && (edge.Nodes[0] == CurrentNode || edge.Nodes[1] == CurrentNode))
             {
                 potentialNextEdges.Add(edge);
             }

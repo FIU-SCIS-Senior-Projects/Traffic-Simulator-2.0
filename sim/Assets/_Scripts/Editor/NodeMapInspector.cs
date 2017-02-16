@@ -24,16 +24,27 @@ public class NodeMapInspector : Editor
 
 /// <summary>
 /// The Node Map editor
-/// A tool to allow a non-technical designer to easily edit a Node Map
+/// Custom Editor Window
+/// A tool to allow a non-technical designer to easily create and edit node maps
+/// TO DO: 
+///     1. UpdateSelection on all event functions before performing action
+///     2. Implenent UNDO
+///         
 /// </summary>
 public class NodeMapInspectorWindow : EditorWindow 
 {
     private NodeMap map;
     private Vector3 spawnPoint;
     private Vector3 spawnOffset;
-    private Node selectedNode;
+    int GridOffset = 5;
+    int GridRows = 5;
+    int GridColumns = 5;
+
+    private List<Node> selectedNodes;
+    private List<Edge> selectedEdges;
     private int selectedConnectionIndex = 0;
     private AnimBool showMoreOptions;
+    private string prefabName = "NodeMap1";
 
     [MenuItem("Window/NodeMap")]
     public static void ShowWindow()
@@ -41,23 +52,175 @@ public class NodeMapInspectorWindow : EditorWindow
         EditorWindow.GetWindow(typeof(NodeMapInspector));
     }
 
+    /// <summary>
+    /// Initializes the nodemap and the GUI
+    /// </summary>
+    /// <param name="target"></param>
     public void Init(NodeMap target)
     {
         map = target;
         map.Init();
         showMoreOptions = new AnimBool(true);
         showMoreOptions.valueChanged.AddListener(Repaint);
+        selectedNodes = new List<Node>();
+        selectedEdges = new List<Edge>();
     }
 
+    /// <summary>
+    /// Called when the window is destroyed
+    /// Prompts the user to save before destroying
+    /// </summary>
     private void OnDestroy()
     {
         Debug.Log("Editor Window Destroyed");
-        CreatePrefab();
+        CreatePrefab(prefabName);
     }
 
-    public void CreatePrefab()
+    private void OnUpdateSelection()
     {
-        string localPath = "Assets/Prefabs/NodeMaps/" + map.gameObject.name + ".prefab";
+        
+        if(GUILayout.Button("Update Selection"))
+        {
+
+            
+            selectedNodes.Clear();
+            selectedEdges.Clear();
+            if (Selection.gameObjects != null)
+            {
+                
+                if (Selection.gameObjects.Length > 0)
+                {
+                    foreach (GameObject go in Selection.gameObjects)
+                    {
+                        Node node = go.GetComponent<Node>();
+                        Edge edge = go.GetComponent<Edge>();
+
+                        if(edge != null)
+                        {
+                            selectedEdges.Add(edge);
+                        }
+
+                        if (node != null)
+                        {
+                            
+                            selectedNodes.Add(node);
+                        }
+                    }
+                }
+            }   
+        }
+    }
+
+    /// <summary>
+    /// The GUI for the Node Map Editor
+    /// </summary>
+    private void OnGUI()
+    {
+        OnAddGrid();
+
+        EditorGUILayout.Space();
+
+        OnAddNode();
+
+        EditorGUILayout.Space();
+
+        OnRemoveNode();
+
+        EditorGUILayout.Space();
+
+        OnUpdateAllEdges();
+        OnResetAllEdges();
+        OnUpdateSelectedEdges();
+        OnGenerateIntersections();
+
+
+        EditorGUILayout.Space();
+
+        OnGenerateMesh();
+
+        EditorGUILayout.Space();
+
+        OnShowMoreOptions();
+
+        EditorGUILayout.EndFadeGroup();
+    }
+
+    /// <summary>
+    /// Shows more GUI options
+    /// </summary>
+    private void OnShowMoreOptions()
+    {
+        showMoreOptions.target = EditorGUILayout.ToggleLeft("Show More Options", showMoreOptions.target);
+        //Extra block that can be toggled on and off.
+        if (EditorGUILayout.BeginFadeGroup(showMoreOptions.faded))
+        {
+            EditorGUI.indentLevel++;
+
+
+
+            OnConnectNodes();
+
+            EditorGUILayout.Space();
+
+            OnDisconnectNodes();
+
+            EditorGUILayout.Space();
+
+            OnCreatePrefab();
+
+            EditorGUILayout.Space();
+
+            OnUpdateSelection();
+
+
+            if (selectedNodes != null && selectedNodes.Count > 0)
+            {
+                string selectedNodeNames = "";
+                int count = 0;
+                foreach (Node n in selectedNodes)
+                {
+
+                    selectedNodeNames += n.name + ", ";
+
+                    if (count > 3)
+                    {
+                        count = 0;
+                        selectedNodeNames += "\n\t         ";
+                    }
+                    count++;
+                }
+
+                GUILayout.Label("Selecting Nodes: " + selectedNodeNames);
+            }
+
+            EditorGUI.indentLevel--;
+        }
+    }
+
+    public void OnAddGrid()
+    {
+        GridRows = EditorGUILayout.IntField("Number of Rows: ", GridRows);
+        GridColumns = EditorGUILayout.IntField("Number of Nodes Per Row: ", GridColumns);
+        GridOffset = EditorGUILayout.IntSlider("Node Offset", GridOffset, 1, 10);
+
+        List<Node> gridNodes = new List<Node>();
+
+        if (GUILayout.Button("Add Grid"))
+        {
+            gridNodes = map.AddNodeGrid(GridColumns, GridRows, map.transform.position, GridOffset);
+        }
+
+        map.UpdateEdges(gridNodes, true);
+
+    }
+
+    /// <summary>
+    /// Saves the Nodemap currently being edited with a specified name
+    /// </summary>
+    /// <param name="name"></param>
+    public void CreatePrefab(string name)
+    {
+        string localPath = "Assets/Prefabs/NodeMaps/" + name + ".prefab";
         if (AssetDatabase.LoadAssetAtPath(localPath, typeof(GameObject)))
         {
             if (EditorUtility.DisplayDialog("Are you sure?",
@@ -66,33 +229,42 @@ public class NodeMapInspectorWindow : EditorWindow
                 "No"))
             {
                 Debug.Log("Creating Prefab");
-                CreateNewPrefab(map.gameObject, localPath);
+                CreateNewPrefab(map.gameObject, name, localPath);
             }
         }
         else
         {
             Debug.Log(map.gameObject.name + " is not a prefab, will convert");
-            CreateNewPrefab(map.gameObject, localPath);
+            CreateNewPrefab(map.gameObject, name, localPath);
         }
     }
 
-    static void CreateNewPrefab(GameObject obj, string localPath)
+    /// <summary>
+    /// static helper method to save prefabs
+    /// </summary>
+    /// <param name="obj"></param>
+    /// <param name="name"></param>
+    /// <param name="localPath"></param>
+    private static void CreateNewPrefab(GameObject obj, string name, string localPath)
     {
-        Debug.Log("CreateNew: " + obj.name + " : " + localPath);
+        Debug.Log("CreateNew: " + name + " : " + localPath);
         Object prefab = PrefabUtility.CreateEmptyPrefab(localPath);
         PrefabUtility.ReplacePrefab(obj, prefab, ReplacePrefabOptions.ConnectToPrefab);
     }
 
+
+
     /// <summary>
-    /// The GUI for the Node Map Editor
+    /// Adds a node to the nodemap
+    /// If no object is selected it adds it and makes it a neighbor of the last node in the map
+    /// If an object is selected, but that object is not a node it does the same as above
+    /// If an object is selected and it is a node it adds the node as a neighbor to the selected node
     /// </summary>
-    private void OnGUI()
+    private void OnAddNode()
     {
-        EditorGUILayout.Space();
-        // The UI to add a node
         if (GUILayout.Button("Add Node"))
         {
-            map.UpdateNodes();
+            map.UpdateAllNodes(false);
 
             spawnPoint = map.transform.position;
             spawnOffset = new Vector3(5f, 0f, 0);
@@ -100,9 +272,9 @@ public class NodeMapInspectorWindow : EditorWindow
             Node newNode;
 
             // If the user is not selecting a node when adding a node then it will be neighbored to the last node added to the list
-            if (!Selection.activeGameObject)
+            if (selectedNodes == null || selectedNodes.Count == 0)
             {
-                Debug.Log("An Object is not selected");
+                Debug.Log("A node is not selected");
                 if (map.NodeList.Count > 0)
                 {
                     spawnPoint = map.NodeList[map.NodeList.Count - 1].transform.position;
@@ -122,48 +294,36 @@ public class NodeMapInspectorWindow : EditorWindow
             }
             else
             {
-                Debug.Log("An Object is selected");
-                // Try to get the node component of the selected object
-                selectedNode = Selection.activeGameObject.GetComponent<Node>();
+                Debug.Log("A node is selected");
 
-                // If selected object does not have a Node Map perform same action as if there was nothing selected
-                if (selectedNode == null)
-                {
-                    if (map.NodeList.Count > 0)
-                    {
-                        spawnPoint = map.NodeList[map.NodeList.Count - 1].transform.position;
-                        newNode = map.AddNode(spawnPoint + spawnOffset);
-                    }
-                    else
-                    {
-                        spawnPoint = map.transform.position;
-                        newNode = map.AddNode(spawnPoint + spawnOffset);
-                    }
+                // If the user is selecting a node when adding a node then make the new node the neighbor of the currently selected node
+                spawnPoint = selectedNodes[0].transform.position;
 
-                    if (map.NodeList.Count > 1)
-                    {
-                        map.AddNeighbor(newNode, map.NodeList[map.NodeList.Count - 2]);
-                    }
-                }
-                else
-                {
-                    // If the user is selecting a node when adding a node then make the new node the neighbor of the currently selected node
-                    spawnPoint = selectedNode.transform.position;
+                newNode = map.AddNode(spawnPoint + spawnOffset);
 
-                    newNode = map.AddNode(spawnPoint + spawnOffset);
-
-                    map.AddNeighbor(newNode, selectedNode);
-                }
+                map.AddNeighbor(newNode, selectedNodes[0]);
             }
         }
+    }
 
-        EditorGUILayout.Space();
+    /// <summary>
+    /// Removes a node from the node map
+    /// If no object is selected the last node in the node map is removed
+    /// If an object is selected and it is not a node then the same action as above
+    /// If an object is selected and it is a node then it removes the selected node
+    /// All neighbors are updated according on removal
+    /// </summary>
+    private void OnRemoveNode()
+    {
         if (GUILayout.Button("Remove Node"))
         {
-            map.UpdateNodes();
+            if (map.NodeList.Count == 0 || map.NodeList == null)
+                return;
+
+            map.UpdateAllNodes(false);
 
             // If the user is not selecting a node then remove the last node in the Node List
-            if (!Selection.activeGameObject)
+            if (selectedNodes == null || selectedNodes.Count == 0)
             {
                 if (map.RemoveNode(map.NodeList[map.NodeList.Count - 1]))
                 {
@@ -172,44 +332,110 @@ public class NodeMapInspectorWindow : EditorWindow
 
                 return;
             }
-
-            // Try to get the node component of the selected object
-            Node selectedNode = (Selection.activeGameObject.GetComponent<Node>());
-
-            // If selected object does not have a Node Map perform same action as if there was nothing selected
-            if (selectedNode == null)
+            else
             {
-                if (map.RemoveNode(map.NodeList[map.NodeList.Count - 1]))
+                // If the user is selecting a node then remove the selected node from the Node List
+                List<Node> selectedNodesToRemove = new List<Node>();
+                foreach(Node n in selectedNodes)
                 {
-                    Debug.Log("Node " + map.NodeList.Count + " Removed");
+                    int index = map.NodeList.IndexOf(n);
+                    string removedNode = map.NodeList[index].name;
+                    if (map.RemoveNode(n))
+                    {
+                        Debug.Log("'" + removedNode + "' Removed");
+                        selectedNodesToRemove.Add(n);
+                    }
                 }
-                return;
-            }
 
-            // If the user is selecting a node then remove the selected node from the Node List
-            int index = map.NodeList.IndexOf(selectedNode);
-            if (map.RemoveNode(selectedNode))
-            {
-                Debug.Log("Node " + index + " Removed");
+                foreach(Node n in selectedNodesToRemove)
+                {
+                    selectedNodes.Remove(n);
+                }
+
             }
         }
+    }
 
-        EditorGUILayout.Space();
-        // UI to manually Update the Nodes (used after the user moves any node in the scene view
-        // Could call this on Update(), but most of the time the user does not need to move a node.  So its better to just manually call when needed.
-        // Note: Adding or removing nodes will always Update the Nodes, so no need to press this button after adding or removing nodes in scene view.
-        if (GUILayout.Button("Update Nodes"))
-        {
-            map.UpdateNodes();
-        }
-
-        EditorGUILayout.Space();
+    /// <summary>
+    /// Creates a prefab of the nodemap and saves it in a pre determined folder
+    /// </summary>
+    private void OnCreatePrefab()
+    {
+        prefabName = EditorGUILayout.TextField("Prefab Name: ", prefabName);
         if (GUILayout.Button("Create Prefab"))
         {
-            CreatePrefab();
+            Debug.Log(prefabName);
+            CreatePrefab(prefabName);
         }
+    }
 
-        EditorGUILayout.Space();
+    private void OnGenerateIntersections()
+    {
+        if (GUILayout.Button("Generate Intersections"))
+        {
+            if (selectedEdges != null || selectedEdges.Count > 0)
+            {
+                map.GenerateIntersectionNodes(selectedEdges);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Updates all the nodes and edges in the map
+    /// </summary>
+    private void OnUpdateSelectedEdges()
+    {
+        if (GUILayout.Button("Update Selected Edges"))
+        {
+            if (selectedNodes != null || selectedNodes.Count > 0)
+            {
+                map.UpdateEdges(selectedNodes, false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Updates all the nodes and edges in the map
+    /// </summary>
+    private void OnResetSelectedEdges()
+    {
+        if (GUILayout.Button("Update Selected Edges"))
+        {
+            if (selectedNodes != null || selectedNodes.Count > 0)
+            {
+                map.UpdateEdges(selectedNodes, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Updates all the nodes and edges in the map
+    /// </summary>
+    private void OnUpdateAllEdges()
+    {
+        if (GUILayout.Button("Update All Edges"))
+        {
+            map.UpdateAllNodes(false);
+        }
+    }
+
+    /// <summary>
+    /// Updates all the nodes and edges in the map
+    /// </summary>
+    private void OnResetAllEdges()
+    {
+        if (GUILayout.Button("Reset All Edges"))
+        {
+            map.UpdateAllNodes(true);
+        }
+    }
+
+    /// <summary>
+    /// Procedural generates a mesh from the edge spline
+    /// Used to simulate roads
+    /// </summary>
+    private void OnGenerateMesh()
+    {
         if (GUILayout.Button("Generate Mesh"))
         {
 
@@ -240,7 +466,7 @@ public class NodeMapInspectorWindow : EditorWindow
             {
                 List<OrientedPoint> path = new List<OrientedPoint>();
                 MeshFilter mf = edge.gameObject.GetComponent<MeshFilter>();
-                if(mf.sharedMesh == null)
+                if (mf.sharedMesh == null)
                 {
                     mf.sharedMesh = new Mesh();
                 }
@@ -272,65 +498,61 @@ public class NodeMapInspectorWindow : EditorWindow
             }
 
         }
+    }
 
-        EditorGUILayout.Space();
-        if (GUILayout.Button("Re-Init Nodes"))
+
+
+    /// <summary>
+    /// Connects two nodes
+    /// User selects a node in the scene and selects a node to connect it to from a drop down menu
+    /// TO DO: Add connections when more than 2 nodes are selected
+    /// </summary>
+    private void OnConnectNodes()
+    {
+        if (GUILayout.Button("Connect Nodes"))
         {
-            foreach(Node n in map.NodeList)
+            if (selectedNodes != null && selectedNodes.Count != 0)
             {
-                n.Init();
-            }
-        }
 
-        EditorGUILayout.Space();
-        showMoreOptions.target = EditorGUILayout.ToggleLeft("Show More Options", showMoreOptions.target);
-        //Extra block that can be toggled on and off.
-        if (EditorGUILayout.BeginFadeGroup(showMoreOptions.faded))
-        {
-            EditorGUI.indentLevel++;
-            string[] options = new string[map.NodeList.Count];
-
-
-            for (int i = 0; i < map.NodeList.Count; i++)
-            {
-                if(map.NodeList[i] != null)
+                if (selectedNodes.Count < 2)
                 {
-                    options[i] = map.NodeList[i].gameObject.name;
-                } 
-            }
+                    Debug.Log("Please select at least two nodes to connect");
+                    return;
+                }
 
-
-
-            selectedConnectionIndex = EditorGUILayout.Popup("Select a Node", selectedConnectionIndex, options);
-
-            if (GUILayout.Button("Connect"))
-            {
-                if (!Selection.activeGameObject)
+                if (selectedNodes.Count > 2)
                 {
-                    Debug.Log("An Object is not selected");
+
+                    map.NearestNeighborsConnectNodes(selectedNodes);
+                    
                 }
                 else
                 {
-                    Debug.Log("An Object is selected");
-                    // Try to get the node component of the selected object
-                    selectedNode = Selection.activeGameObject.GetComponent<Node>();
-
-                    // If selected object does not have a Node Map perform same action as if there was nothing selected
-                    if (selectedNode == null)
-                    {
-                        Debug.Log("Selected Object is not a Node");
-                    }
-                    else
-                    {
-                        map.AddNeighbor(map.NodeList[selectedConnectionIndex], selectedNode);
-                    }
+                    map.AddNeighbor(selectedNodes[0], selectedNodes[1]);
                 }
             }
-            EditorGUI.indentLevel--;
         }
-
-        EditorGUILayout.EndFadeGroup();
     }
+
+
+
+    /// <summary>
+    /// </summary>
+    private void OnDisconnectNodes()
+    {
+        if (GUILayout.Button("Disconnect Nodes"))
+        {
+            if (selectedNodes != null && selectedNodes.Count != 0)
+            {
+                foreach(Node n in selectedNodes)
+                {
+                    map.RemoveAllNeighbors(n);
+                }
+            }
+        }
+    }
+
+
 
 
 }
