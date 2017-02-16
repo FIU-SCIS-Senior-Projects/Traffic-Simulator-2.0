@@ -5,6 +5,8 @@ from math import ceil, log2
 from typing import Any, List, Set, FrozenSet, NamedTuple
 
 
+# Custom Exceptions ===========================================================
+
 class NonSquareMatrix(Exception):
     pass
 
@@ -24,6 +26,28 @@ class VertexNonExistent(Exception):
 class NonOverlappingEndVertices(Exception):
     pass
 
+# =============================================================================
+
+
+# Types / Structs =============================================================
+
+RepSet = NamedTuple("RepSet", [('set', FrozenSet), ('rep', int)])
+HDS_Element = FrozenSet[RepSet]
+HDS = List[HDS_Element]
+HDT_Node = NamedTuple("HDT_Node", [('repset', RepSet), ('level', int)])
+
+# =============================================================================
+
+
+class Vertex(object):
+    # Trying to reduce object size by using __slots__
+    __slots__ = ['rep', 'cluster', 'flag']
+
+    def __init__(self, rep, cluster, flag):
+        self.rep = rep
+        self.cluster = cluster
+        self.flag = flag
+
 
 class GraphUtils:
     @staticmethod
@@ -38,17 +62,139 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
+    def randomized_HDS_gen(G, pi=None, U=None) -> HDS:
+        """Generate a HDS based on given or randomly generated paramters.
+        Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
+        """
+        num_vertices = len(G.nodes())
+        V = frozenset(np.arange(num_vertices))
+
+        if not pi:
+            # @TODO: check that this is a uniform permutation
+            pi = np.random.permutation(num_vertices)
+        # print("Random permutation: {}".format(pi))
+
+        if not U:
+            U = np.random.uniform(.5, 1)
+        # print("Random num: {}".format(U))
+
+        h = int(log2(G._diam))
+        H = [None] * (h + 1)  # type: HDS
+
+        # @TODO: does root of tree have a representative?
+        H[h] = frozenset([RepSet(V, None)])
+
+        vertex_dict = {}
+        for v in V:
+            vertex_dict[v] = Vertex(None, None, True)
+
+        for i in reversed(range(0, h)):
+            H_i = set()
+
+            for C in H[i+1]:
+                cluster_set = C.set
+                for v in cluster_set:
+                    v_ver = vertex_dict[v]
+                    v_ver.cluster = set()
+                    v_ver.flag = True
+
+                    v_ver.rep = None
+                    for j in pi:
+                        # @TODO: think about doing memoization for speedup
+                        v_neighborhood = G.r_neighborhood(v, U * 2**(i-1))
+                        if j in (cluster_set & v_neighborhood):
+                            v_ver.rep = j
+                            break
+
+                    # Something is wrong if this triggers
+                    assert(v_ver.rep is not None)
+
+                for v in cluster_set:
+                    v_ver = vertex_dict[v]
+                    for u in cluster_set:
+                        u_ver = vertex_dict[u]
+                        if u_ver.flag and u_ver.rep == v:
+                            u_ver.flag = False
+                            v_ver.cluster.add(u)
+
+                for v in cluster_set:
+                    v_ver = vertex_dict[v]
+                    if v_ver.cluster:
+                        H_i.add(RepSet(frozenset(v_ver.cluster), v_ver.rep))
+
+            H[i] = frozenset(H_i)
+
+        return H
+
+    @staticmethod
+    def hds_to_hdt(hds: HDS):
+        G = nx.Graph()
+
+        for i in reversed(range(0, len(hds) - 1)):
+            for C in hds[i]:
+                node = HDT_Node(C, i)
+                G.add_node(node)
+
+                added_parent = False
+                for Cp in hds[i+1]:
+                    parent_node = HDT_Node(Cp, i+1)
+                    if C.set <= Cp.set:
+                        G.add_edge(node, parent_node)
+                        added_parent = True
+                        break
+
+                assert(added_parent is True)
+
+        return G
+
+    @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
         """Merge two paths that have overlapping vertices.
 
         path1: [v_1, v_2, ... , v_k]
                                 ||
-                               [v_k, v_k+1, ...] : path2
+        path2:                 [v_k, v_k+1, ...]
         """
         if path1[-1] != path2[0]:
             raise NonOverlappingEndVertices
 
-        return path1[:-1] + path2[1:]
+        return path1[:-1] + path2
+
+    @staticmethod
+    def projection(G, hdt_path: List[HDT_Node]) -> List[int]:
+        starting_node = hdt_path[0]  # type: HDT_Node
+
+        # Setting this up for easy calls to merge function later
+        projection_path = [starting_node.repset.rep]
+
+        traversed_root = False
+
+        prev_repset = None
+        for hdt_node in hdt_path:
+            repset = hdt_node.repset
+
+            if not prev_repset:
+                prev_repset = repset
+                continue
+
+            # @TODO: does root of tree have a representative?
+            if not repset.rep:
+                # Only the root node should have a non-true representative.
+                # If this triggers, then more than one node has non-true
+                # representative.
+                assert(traversed_root is False)
+
+                traversed_root = True
+                continue
+
+            projection_path = GraphUtils.merge(
+                projection_path,
+                nx.dijkstra_path(G, prev_repset.rep, repset.rep)
+            )
+
+            prev_repset = repset
+
+        return projection_path
 
 
 class GraphDiam2h(nx.MultiDiGraph):
@@ -112,20 +258,6 @@ class GraphDiam2h(nx.MultiDiGraph):
         return set(nbhd.keys())
 
 
-class Vertex(object):
-    # Trying to reduce object size by using __slots__
-    __slots__ = ['rep', 'cluster', 'flag']
-
-    def __init__(self, rep, cluster, flag):
-        self.rep = rep
-        self.cluster = cluster
-        self.flag = flag
-
-
-# For sets that have a representative member
-RepSet = NamedTuple("RepSet", [('set', FrozenSet), ('rep', int)])
-
-
 class Routing(object):
     def __init__(self, M: List[List[float]] = None) -> None:
         self.set_graph(M)
@@ -137,94 +269,6 @@ class Routing(object):
             return
 
         self._graph = GraphDiam2h(M)
-
-    @staticmethod
-    def randomized_HDS_gen(G,
-                           pi=None,
-                           U=None) -> List[FrozenSet[RepSet]]:
-        """Generate a HDS based on given or randomly generated paramters.
-        Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
-        """
-        num_vertices = len(G.nodes())
-        V = frozenset(np.arange(num_vertices))
-
-        if not pi:
-            # @TODO: check that this is a uniform permutation
-            pi = np.random.permutation(num_vertices)
-        # print("Random permutation: {}".format(pi))
-
-        if not U:
-            U = np.random.uniform(.5, 1)
-        # print("Random num: {}".format(U))
-
-        h = int(log2(G._diam))
-        H = [None] * (h + 1)  # type: List[FrozenSet[RepSet]]
-
-        # @TODO: what's the representative vertex of V?
-        H[h] = frozenset([RepSet(V, None)])
-
-        vertex_dict = {}
-        for v in V:
-            vertex_dict[v] = Vertex(None, None, True)
-
-        for i in reversed(range(0, h)):
-            H_i = set()
-
-            for C in H[i+1]:
-                cluster_set = C.set
-                for v in cluster_set:
-                    v_ver = vertex_dict[v]
-                    v_ver.cluster = set()
-                    v_ver.flag = True
-
-                    v_ver.rep = None
-                    for j in pi:
-                        # @TODO: think about doing memoization for speedup
-                        v_neighborhood = G.r_neighborhood(v, U * 2**(i-1))
-                        if j in (cluster_set & v_neighborhood):
-                            v_ver.rep = j
-                            break
-
-                    # Something is wrong if this triggers
-                    assert(v_ver.rep is not None)
-
-                for v in cluster_set:
-                    v_ver = vertex_dict[v]
-                    for u in cluster_set:
-                        u_ver = vertex_dict[u]
-                        if u_ver.flag and u_ver.rep == v:
-                            u_ver.flag = False
-                            v_ver.cluster.add(u)
-
-                for v in cluster_set:
-                    v_ver = vertex_dict[v]
-                    if v_ver.cluster:
-                        H_i.add(RepSet(frozenset(v_ver.cluster), v_ver.rep))
-
-            H[i] = frozenset(H_i)
-
-        return H
-
-    @staticmethod
-    def hds_to_hdt(hds: List[FrozenSet[RepSet]]):
-        G = nx.Graph()
-
-        for i in reversed(range(0, len(hds) - 1)):
-            for C in hds[i]:
-                node = (C, i)
-                G.add_node(node)
-
-                added_parent = False
-                for Cp in hds[i+1]:
-                    parent_node = (Cp, i+1)
-                    if C.set <= Cp.set:
-                        G.add_edge(node, parent_node)
-                        added_parent = True
-                        break
-
-                assert(added_parent is True)
-
-        return G
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
