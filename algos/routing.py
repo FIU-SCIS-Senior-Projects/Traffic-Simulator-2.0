@@ -82,7 +82,8 @@ class GraphUtils:
         H = [None] * (h + 1)  # type: HDS
 
         # @TODO: does root of tree have a representative?
-        H[h] = frozenset([RepSet(V, None)])
+        # Trying out an arbitrary member as the representative
+        H[h] = frozenset([RepSet(V, pi[0])])
 
         vertex_dict = {}
         for v in V:
@@ -167,7 +168,7 @@ class GraphUtils:
         # Setting this up for easy calls to merge function later
         projection_path = [starting_node.repset.rep]
 
-        traversed_root = False
+        #traversed_root = False
 
         prev_repset = None
         for hdt_node in hdt_path:
@@ -178,14 +179,14 @@ class GraphUtils:
                 continue
 
             # @TODO: does root of tree have a representative?
-            if not repset.rep:
-                # Only the root node should have a non-true representative.
-                # If this triggers, then more than one node has non-true
-                # representative.
-                assert(traversed_root is False)
+            #if not repset.rep:
+            #    # Only the root node should have a non-true representative.
+            #    # If this triggers, then more than one node has non-true
+            #    # representative.
+            #    assert(traversed_root is False)
 
-                traversed_root = True
-                continue
+            #    traversed_root = True
+            #    continue
 
             projection_path = GraphUtils.merge(
                 projection_path,
@@ -280,6 +281,9 @@ class Routing(object):
         if algo == 0:
             try:
                 path = nx.dijkstra_path(self._graph, s, t)
+                # @TODO: why is networkx spitting out numpy int64's as the
+                # as the nodes?
+                path = [int(x) for x in path]
             except KeyError:  # One of the vertices is not in graph
                 raise VertexNonExistent
 
