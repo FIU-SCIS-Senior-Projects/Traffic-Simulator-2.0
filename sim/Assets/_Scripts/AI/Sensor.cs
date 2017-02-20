@@ -7,13 +7,13 @@ public class Sensor : MonoBehaviour
 
     public bool SensorTrigger = false;
 
-    private void OnTriggerEnter(Collider other)
+    public bool CheckFront(Vector3 forward)
     {
-        SensorTrigger = true;
+        return false;
     }
 
-    private void OnTriggerExit(Collider other)
+    public bool CheckBack(Vector3 back)
     {
-        SensorTrigger = false;
+        return false;
     }
 }

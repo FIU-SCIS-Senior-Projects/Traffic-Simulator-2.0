@@ -441,9 +441,9 @@ public class NodeMapInspectorWindow : EditorWindow
 
             Vector2[] verts = new Vector2[]
             {
-                new Vector2(-0.25f,0),
+                new Vector2(-0.5f,0),
                 new Vector2(0,0),
-                new Vector2(0.25f,0),
+                new Vector2(0.5f,0)
             };
 
             Vector2[] norms = new Vector2[]

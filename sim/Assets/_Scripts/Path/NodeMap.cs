@@ -29,7 +29,7 @@ public class NodeMap : MonoBehaviour
     [SerializeField]
     public List<GameObject> EdgeObjList;
 
-    private int[,] AdjMatrix;
+    public float[,] AdjMatrix;
 
     /// <summary>
     /// Inits the Node Map, only called once
@@ -106,7 +106,6 @@ public class NodeMap : MonoBehaviour
                 Debug.Log(index);
                 for (int j = index; j < index + w; j++)
                 {
-                    Debug.Log(j);
                     AddNeighbor(NodeList[j], NodeList[j - w]);
                 }
             }
@@ -668,11 +667,22 @@ public class NodeMap : MonoBehaviour
     /// </summary>
     public void UpdateAdjMatrix()
     {
-        AdjMatrix = new int[NodeList.Count, NodeList.Count];
+        AdjMatrix = new float[NodeList.Count, NodeList.Count];
 
         for (int i = 0; i < AdjMatrix.GetLength(0); i++)
             for (int j = 0; j < AdjMatrix.GetLength(1); j++)
-                AdjMatrix[i,j] = CalcDistanceWeight(NodeList[i].transform.position, NodeList[j].transform.position);
+            {
+                if(NodeList[i].Neighbors.Contains(NodeList[j]))
+                {
+                    AdjMatrix[i, j] = CalcDistanceWeight(NodeList[i].transform.position, NodeList[j].transform.position);
+                }
+                else
+                {
+                    AdjMatrix[i, j] = -1;
+                }
+                
+            }
+                
 
         Debug.Log("Matrix has been updated");
         PrintMatrixFormatted();

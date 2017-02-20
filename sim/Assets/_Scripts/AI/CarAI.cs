@@ -8,43 +8,43 @@ using UnityEngine;
 /// For now I am manually setting a path of up to 10 waypoints, but in future these waypoints would come from the output of the pathfinding algorithm
 /// </summary>
 [RequireComponent(typeof(SplineWalker))]
+[RequireComponent(typeof(CarPather))]
 public class CarAI : MonoBehaviour
 {
     public float MaxSpeed;
-    public float SlowSpeed;
-    public NodeMap Map;
-    public Sensor FrontSensor;
-    public Sensor RearSensor;
+    public float Acceleration;
+    public float CautionDistance;
+    public float StopDistance;
+    public float LookDistance;
+    public LayerMask CollisionDetectionLayer;
+    public LayerMask NodeDetectionLayer;
 
-    public List<Node> Path;
+
     private SplineWalker Walker;
-    private Node[] AvailableNodes;
-    private Edge[] AvailableEdges;
-    public Node NextNode;
-    public Node CurrentNode;
-    private int CurrentPathIndex;
+    private CarPather Pather;
+    private BoxCollider Collider;
+    private bool shouldAccelerate;
 
-    private List<Node> potentialNextNodes = new List<Node>();
 
-    private bool PathReady = false;
-    private bool GoingForward = true;
+    private void Init()
+    {
+        Walker = GetComponent<SplineWalker>();
+        Pather = GetComponent<CarPather>();
+        Collider = GetComponent<BoxCollider>();
+        Walker.Mode = SplineWalkerMode.Once;
+
+        // This is hardcoded temporarily.  In future will get a duration based on the speed limit of the edge were on
+        Walker.Duration = MaxSpeed;
+        SetNextEdge(Pather.CurrentPathIndex);
+    }
 
     /// <summary>
     /// Called once after Awake()
     /// </summary>
     protected void Start()
     {
-        CurrentPathIndex = 0;
-        Path = new List<Node>();
-        Walker = GetComponent<SplineWalker>();
-        Walker.Mode = SplineWalkerMode.Once;
+        Init();
 
-        // This is hardcoded temporarily.  In future will get a duration based on our speed and the arclength of the bezier spline (see bezier spline class)
-        Walker.Duration = MaxSpeed;
-        GetPath(20);
-
-        SetNextEdge(CurrentPathIndex);
-        CurrentPathIndex++;
     }
 
     /// <summary>
@@ -52,176 +52,57 @@ public class CarAI : MonoBehaviour
     /// </summary>
     protected void Update()
     {
-        if (!PathReady)
+        if (!Pather.PathReady)
             return;
 
-        if (CurrentPathIndex == Path.Count-1)
+        if (Pather.CurrentPathIndex == Pather.Path.Count-1)
         {
-            CurrentPathIndex = 0;
-            transform.position = Path[CurrentPathIndex].gameObject.transform.position;
+            Pather.CurrentPathIndex = 0;
+            transform.position = Pather.Path[Pather.CurrentPathIndex].gameObject.transform.position;
         }
 
-        if(GoingForward)
+        if(Pather.GoingForward)
         {
+            RayCastFront();
             Walker.LaneMultiplier = 0.15f;
             if (Walker.Progress == 1f)
             {
-                SetNextEdge(CurrentPathIndex);
-                
-                CurrentPathIndex++;
+                SetNextEdge(Pather.CurrentPathIndex);
+
+                Pather.CurrentPathIndex++;
             }
         }
         else
         {
+            RayCastBack();
             Walker.LaneMultiplier = -0.15f;
             if (Walker.Progress == 0f)
             {
-                SetNextEdge(CurrentPathIndex);
-                
-                CurrentPathIndex++;
+                SetNextEdge(Pather.CurrentPathIndex);
+
+                Pather.CurrentPathIndex++;
             }
         }
 
-        CheckFront();
-    }
-
-    private void CheckFront()
-    {
-        if(FrontSensor.SensorTrigger)
-        {
-            Walker.Duration = SlowSpeed;
-        }
-        else
-        {
-            Walker.Duration = MaxSpeed;
-        }
-    }
-
-    private void CheckRear()
-    {
-        if (RearSensor.SensorTrigger)
-        {
-            if(!FrontSensor.SensorTrigger)
-            {
-                Walker.Duration = MaxSpeed;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Test method to get a random path
-    /// Later we will get a path from an algorithm
-    /// </summary>
-    protected void GetPath(int size)
-    {
-        int randomNodeIndex = Random.Range(0, Map.NodeList.Count-1);
-        int currentPathIndex = 0;
-        int tryGetUniquePathCount = 0;
         
-        // Start with a random first node
-        Path.Add(Map.NodeList[randomNodeIndex]);
-        Node lastNode = Path[CurrentPathIndex];
-
-        while (Path.Count < size)
-        {
-
-            potentialNextNodes.Clear();
-
-            // pick a random next node based on the available connections from the start node
-            AvailableNodes = Path[currentPathIndex].Neighbors.ToArray();
-
-            foreach (Node node in AvailableNodes)
-            {
-                // Add the destination node of this edge to our potential next nodes
-                // (See the Edge class if confused about the destination node)
-                potentialNextNodes.Add(node);
-            }
-
-            // incrememnt out index to the next node after we have found all the potential nodes from the current index
-
-
-
-            // tries 10 times to get a different next node than the last node 
-            // (this is to make sure we dont get stuck in an infinite loop if the only next node we can go to is the previous node i.e. a dead end)
-            tryGetUniquePathCount = 0;
-            do
-            {
-                randomNodeIndex = Random.Range(0, potentialNextNodes.Count);
-                tryGetUniquePathCount++;
-
-            } while ((potentialNextNodes[randomNodeIndex] == lastNode) && tryGetUniquePathCount < 10); 
-
-            //Debug.Log("Potential Next Node: " + potentialNextNodes[randomNodeIndex]);
-            //Debug.Log("Last Node: " + lastNode.gameObject.name);
-
-            lastNode = Path[currentPathIndex];
-
-            currentPathIndex++;
-
-
-            // Add a random node from our potential nodes to our path
-            Path.Add(potentialNextNodes[randomNodeIndex]);
-        }
-        PathReady = true;
-    }
-
-    /// <summary>
-    /// Gets a random edge that connects to the next node in the path
-    /// </summary>
-    /// <returns></returns>
-    protected Edge GetNextEdge()
-    {
-        AvailableEdges = NextNode.GetComponentsInChildren<Edge>();
-        List<Edge> potentialNextEdges = new List<Edge>();
-        int randomEdgeIndex = 0;
-
-
-        foreach (Edge edge in AvailableEdges)
-        {
-            if ((edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode) && (edge.Nodes[0] == CurrentNode || edge.Nodes[1] == CurrentNode))
-            {
-                potentialNextEdges.Add(edge);
-            }
-        }
-
-        AvailableEdges = CurrentNode.GetComponentsInChildren<Edge>();
-
-        foreach (Edge edge in AvailableEdges)
-        {
-            if ((edge.Nodes[0] == NextNode || edge.Nodes[1] == NextNode) && (edge.Nodes[0] == CurrentNode || edge.Nodes[1] == CurrentNode))
-            {
-                potentialNextEdges.Add(edge);
-            }
-        }
-
-        randomEdgeIndex = Random.Range(0, potentialNextEdges.Count);
-        Edge nextEdge = potentialNextEdges[randomEdgeIndex];
-
-        if (nextEdge.Nodes[0] == NextNode)
-        {
-            GoingForward = false;
-        }
-        else
-        {
-            GoingForward = true;
-        }
-
-        return nextEdge;
 
     }
+
+ 
+
 
     /// <summary>
     /// Sets the next edge
     /// </summary>
     /// <param name="currentNodeIndex"></param>
-    protected void SetNextEdge(int currentNodeIndex)
+    public void SetNextEdge(int currentNodeIndex)
     {
-        CurrentNode = Path[currentNodeIndex];
-        NextNode = Path[currentNodeIndex + 1];
+        Pather.CurrentNode = Pather.Path[currentNodeIndex];
+        Pather.NextNode = Pather.Path[currentNodeIndex + 1];
 
-        Walker.Spline = GetNextEdge();
-        Walker.GoingForward = this.GoingForward;
-        if(GoingForward)
+        Walker.Spline = Pather.GetNextEdge();
+        Walker.GoingForward = Pather.GoingForward;
+        if (Pather.GoingForward)
         {
             Walker.Progress = 0f;
         }
@@ -231,4 +112,121 @@ public class CarAI : MonoBehaviour
         }
 
     }
+
+
+
+    private void RayCastFront()
+    {
+        RaycastHit hit;
+        
+        if (Physics.Raycast(gameObject.transform.position, Walker.Forward(), out hit, LookDistance, CollisionDetectionLayer))
+        {
+            CarAI RaycastHitAI = hit.transform.gameObject.GetComponent<CarAI>();
+            if(RaycastHitAI != this)
+            {
+                Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
+                if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < CautionDistance)
+                {
+                    if(Walker.Duration < RaycastHitAI.Walker.Duration)
+                    {
+                        Walker.Duration += Acceleration;
+                    }
+                    else
+                    {
+                        Walker.Duration = MaxSpeed;
+                    }
+                }
+                if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < StopDistance)
+                {
+                    if (Walker.Duration < RaycastHitAI.Walker.Duration)
+                    {
+                        Walker.Duration = RaycastHitAI.Walker.Duration;
+                    }
+                }
+            }
+            else
+            {
+                if (Walker.Duration > MaxSpeed)
+                {
+                    Walker.Duration -= Acceleration;
+                }
+                else
+                {
+                    Walker.Duration = MaxSpeed;
+                }
+            }
+        }
+        else
+        {
+            if(Walker.Duration > MaxSpeed)
+            {
+                Walker.Duration -= Acceleration;
+            }
+            else
+            {
+                Walker.Duration = MaxSpeed;
+            }
+        }
+    }
+
+    private void RayCastBack()
+    {
+        RaycastHit hit;
+        
+        if (Physics.Raycast(gameObject.transform.position, Walker.Back(), out hit, LookDistance, CollisionDetectionLayer))
+        {
+            
+            CarAI RaycastHitAI = hit.transform.gameObject.GetComponent<CarAI>();
+            if (RaycastHitAI != this)
+            {
+                Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
+                if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < CautionDistance)
+                {
+                    if (Walker.Duration < RaycastHitAI.Walker.Duration)
+                    {
+                        Walker.Duration += Acceleration;
+                    }
+                    else
+                    {
+                        Walker.Duration = MaxSpeed;
+                    }
+                }
+                if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < StopDistance)
+                {
+                    if (Walker.Duration < RaycastHitAI.Walker.Duration)
+                    {
+                        Walker.Duration = RaycastHitAI.Walker.Duration;
+                    }
+                }
+            }
+            else
+            {
+                if (Walker.Duration > MaxSpeed)
+                {
+                    Walker.Duration -= Acceleration;
+                }
+                else
+                {
+                    Walker.Duration = MaxSpeed;
+                }
+            }
+        }
+        else
+        {
+            if (Walker.Duration > MaxSpeed)
+            {
+                Walker.Duration -= Acceleration;
+            }
+            else
+            {
+                Walker.Duration = MaxSpeed;
+            }
+        }
+    }
+
+
+
+
+
+    
 }

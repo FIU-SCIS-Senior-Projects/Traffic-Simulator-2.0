@@ -23,11 +23,16 @@ public class SplineWalker : MonoBehaviour
 
     public Vector3 PositionOffset;
 
+    public bool Halt = false;
+
     /// <summary>
     /// Each step of the path
     /// </summary>
     protected void Step()
     {
+        if (Halt)
+            return;
+
         if (GoingForward)
         {
             Progress += Time.deltaTime / Duration;
@@ -58,7 +63,7 @@ public class SplineWalker : MonoBehaviour
         }
 
 
-        Debug.DrawRay(transform.position, Vector3.Cross(CurrentDirection, new Vector3(0,0,1)), Color.green);
+        //Debug.DrawRay(transform.position, Vector3.Cross(CurrentDirection, new Vector3(0,0,1)), Color.green);
         PositionOffset = Vector3.Cross(CurrentDirection, new Vector3(0, 0, 1)) * LaneMultiplier;
         Vector3 position = Spline.GetPoint(Progress) + PositionOffset;
         position = new Vector3(position.x, position.y, 0); // for 2D
@@ -67,7 +72,7 @@ public class SplineWalker : MonoBehaviour
         CurrentDirection = Spline.GetDirection(Progress);
         CurrentDirection = new Vector3(CurrentDirection.x, CurrentDirection.y, 0);
 
-        Debug.DrawRay(transform.position, CurrentDirection);
+        //Debug.DrawRay(transform.position, CurrentDirection);
 
         if (LookForward)
         {
@@ -84,9 +89,18 @@ public class SplineWalker : MonoBehaviour
                 float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
                 transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
             }
-
-
         }
+    }
+
+    public Vector3 Forward()
+    {
+        return Spline.GetDirection(Progress);  
+    }
+
+    public Vector3 Back()
+    {
+        Vector2 dir = Spline.GetDirection(Progress);
+        return dir - 2 * dir;
     }
 
     private void Update()
