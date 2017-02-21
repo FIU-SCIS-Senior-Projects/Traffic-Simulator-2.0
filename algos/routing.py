@@ -226,22 +226,24 @@ class GraphDiam2h(nx.MultiDiGraph):
 
         """
         # Negative weights delimit a non-existent edge between two nodes, which
-        # is equivalent to edge weight of infinity.
-        np_mat[np_mat <= 0.0] = np.inf  # @TODO: Should weight 0.0 be allowed?
-        G_min_edge = np_mat.min()
+        # is equivalent to edge weight of infinity. 0.0 will be used to
+        # represent a non-existent edge as this is what networkx seems to
+        # expect in order to not have an edge between the two nodes.
+        np_mat[np_mat < 0.0] = 0.0
+        G_min_edge = np_mat[np_mat > 0.0].min()
 
         epsilon = np.float(0.01)
+        mult_const = np.float((1 + epsilon) / G_min_edge)
         # @TODO: check to see if there's a faster way of doing this
-        vec_func = np.vectorize(lambda x: ((1+epsilon) / G_min_edge) * x)
+        vec_func = np.vectorize(lambda x: mult_const * x, otypes=[np.float])
         np_mat = vec_func(np_mat)
 
         G_p = nx.MultiDiGraph(np_mat)
         G_p_diam = GraphUtils.graph_diameter(G_p)
 
+        mult_const = ((2 ** ceil(log2(G_p_diam))) / G_p_diam)
         # @TODO: check to see if there's a faster way of doing this
-        vec_func = np.vectorize(
-            lambda x: ((2 ** ceil(log2(G_p_diam))) / G_p_diam) * x
-        )
+        vec_func = np.vectorize(lambda x:  mult_const * x, otypes=[np.float])
         np_mat = vec_func(np_mat)
 
         return np_mat
