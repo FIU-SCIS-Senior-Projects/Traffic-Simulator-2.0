@@ -1,0 +1,54 @@
+To use Traffic Simulator Api:
+On a windows machine, start the file StartApi_TrafficSim.bat
+
+This will host the Api at localhost:5000
+Endpoints:
+POST: /initialize_graph
+Body:
+{
+  "map": [[<float>]]
+}
+Response:
+"The graph was initialized: <Boolean>"
+
+POST: /init_graph_unity
+{
+  "map":[
+    {
+      "row":[
+        <float>,
+        <float>
+      ]
+    },
+    {
+      "row":[
+        <float>,
+        <float>
+      ]
+    }
+  ]
+}
+
+ALTERNATIVE, IF POSSIBLE:
+Body:
+{
+  "map":[
+    {"row":[<float>,<float>]},
+    {"row":[<float>,<float>]},
+  ]
+}
+Response:
+"The graph was initialized: <Boolean>"
+
+
+POST: /get_path
+Body:
+{
+  "algorithm":<int>
+  "source":<int>
+  "target":<int>
+}
+Response:
+{
+  "path": [<int>]
+}

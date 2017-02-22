@@ -13,9 +13,26 @@ def initialize_graph():
     json_data = request.get_json(force=True)
 
     router.set_graph(json_data['map'])
-    success = router._is_init
+    success = router._graph is not None
     return "The graph was initialized: {success}.".format(**locals())
 
+@app.route('/init_graph_unity', methods=['GET', 'POST'])
+def init_graph_unity():
+    if request.method == 'GET':
+        return """This endpoint takes in JSON of the format: {"map":[{"row":[<float>]}]} representing a 2d array of floating point numbers which represent the adjacency matrix of weights between street nodes."""
+
+    json_data = request.get_json(force=True)
+
+    adj_mat = []
+    for row in json_data['map']:
+        adj_row = []
+        for val in row['row']:
+            adj_row.append(val)
+        adj_mat.append(adj_row)
+
+    router.set_graph(adj_mat)
+    success = router._graph is not None
+    return "The graph was initialized: {success}.".format(**locals())
 
 @app.route('/get_path', methods=['GET', 'POST'])
 def get_path():
@@ -28,7 +45,7 @@ def get_path():
     source = json_data['source']
     target = json_data['target']
     path = router.get_path(algo, source, target)
-    return jsonify(map=str(path))
+    return jsonify(map=path)
 
 
 if __name__ == '__main__':
