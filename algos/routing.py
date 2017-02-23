@@ -30,6 +30,10 @@ class NonOverlappingEndVertices(Exception):
 class NonPowerOf2Graph(Exception):
     pass
 
+
+class EmptyMatrixProvided(Exception):
+    pass
+
 # =============================================================================
 
 
@@ -59,9 +63,7 @@ class GraphUtils:
         """Get the set of vertices that are within r distance of v.
         """
         try:
-            nbhd = nx.single_source_dijkstra_path_length(
-                G, v, cutoff=r
-            )
+            nbhd = nx.single_source_dijkstra_path_length(G, v, cutoff=r)
         except KeyError:
             raise VertexNonExistent
 
@@ -204,7 +206,6 @@ class GraphUtils:
             is_subset = False
 
             for cluster in delta_partition:
-
                 if v_neighborhood <= cluster:
                     is_subset = True
                     break
@@ -265,7 +266,7 @@ class GraphUtils:
 class GraphDiam2h(nx.MultiDiGraph):
     def __init__(self, M: List[List[float]]) -> None:
         if M is None:
-            raise Exception("Empty matrix provided")
+            raise EmptyMatrixProvided
 
         adj_mat = np.matrix(M)
 
@@ -273,11 +274,9 @@ class GraphDiam2h(nx.MultiDiGraph):
             raise NonSquareMatrix
 
         self._mat = self._convert_power_of_2_diameter(adj_mat)
-        # self._n_vertices = self._mat.shape[0]
 
         super(GraphDiam2h, self).__init__(self._mat)
 
-        # self._graph = nx.MultiDiGraph(self._mat)
         self._diam = GraphUtils.graph_diameter(self)
 
     def _convert_power_of_2_diameter(self, np_mat):
@@ -318,12 +317,14 @@ class Routing(object):
         self.set_graph(M)
 
     def set_graph(self, M: List[List[float]]) -> None:
-        """Set the adjacency matrix that the routing algorithms will work on.
+        """Generate the necessary objects that the algorithms will work on.
         """
         if M is None:
             return
 
         self._graph = GraphDiam2h(M)
+        self._top_down_integral_scheme = \
+            GraphUtils.integral_scheme_generation(self._graph)
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
@@ -331,15 +332,20 @@ class Routing(object):
         if self._graph is None:
             raise GraphNotSet
 
+        if s == t:
+            return [s]
+
         path = []  # type: List[int]
         if algo == 0:
             try:
                 path = nx.dijkstra_path(self._graph, s, t)
                 # @TODO: why is networkx spitting out numpy int64's as the
-                # as the nodes?
+                # nodes?
                 path = [int(x) for x in path]
             except KeyError:  # One of the vertices is not in graph
                 raise VertexNonExistent
+        elif algo == 1:
+            path = self._top_down_integral_scheme[(s, t)]
 
         else:
             raise UnknownAlgorithm
