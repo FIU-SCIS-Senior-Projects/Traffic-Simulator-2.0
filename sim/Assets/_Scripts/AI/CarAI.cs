@@ -9,43 +9,47 @@ using UnityEngine;
 /// </summary>
 [RequireComponent(typeof(SplineWalker))]
 [RequireComponent(typeof(CarPather))]
-public class CarAI : MonoBehaviour
+public class CarAI : PooledObject
 {
     public float MaxSpeed;
+    public float CautionSpeed;
     public float Acceleration;
     public float CautionDistance;
+
     public float StopDistance;
     public float LookDistance;
     public LayerMask CollisionDetectionLayer;
     public LayerMask NodeDetectionLayer;
 
-
+    private bool Yielding;
+    private bool AlreadyYielded;
+    private Vector3 lastPosition;
     private SplineWalker Walker;
-    private CarPather Pather;
-    private BoxCollider Collider;
-    private bool shouldAccelerate;
+    public CarPather Pather;
 
+    // For Object Pooling
+    void OnLevelWasLoaded()
+    {
+        ReturnToPool();
+    }
 
-    private void Init()
+    public void Init()
     {
         Walker = GetComponent<SplineWalker>();
         Pather = GetComponent<CarPather>();
-        Collider = GetComponent<BoxCollider>();
         Walker.Mode = SplineWalkerMode.Once;
+
+
+
 
         // This is hardcoded temporarily.  In future will get a duration based on the speed limit of the edge were on
         Walker.Duration = MaxSpeed;
-        SetNextEdge(Pather.CurrentPathIndex);
+        Yielding = false;
+        lastPosition = gameObject.transform.position;
     }
 
-    /// <summary>
-    /// Called once after Awake()
-    /// </summary>
-    protected void Start()
-    {
-        Init();
+    
 
-    }
 
     /// <summary>
     /// Called every frame
@@ -55,36 +59,80 @@ public class CarAI : MonoBehaviour
         if (!Pather.PathReady)
             return;
 
-        if (Pather.CurrentPathIndex == Pather.Path.Count-1)
+        if (Pather.CurrentPathIndex == Pather.Path.Count)
         {
-            Pather.CurrentPathIndex = 0;
-            transform.position = Pather.Path[Pather.CurrentPathIndex].gameObject.transform.position;
-        }
-
-        if(Pather.GoingForward)
-        {
-            RayCastFront();
-            Walker.LaneMultiplier = 0.15f;
-            if (Walker.Progress == 1f)
+            if (Pather.GoingForward)
             {
-                SetNextEdge(Pather.CurrentPathIndex);
-
-                Pather.CurrentPathIndex++;
+                if (Walker.Progress == 1f)
+                {
+                    AlreadyYielded = false;
+                    Pather.CurrentPathIndex = 0;
+                    ReturnToPool();
+                }
             }
+            else
+            {
+                if (Walker.Progress == 0f)
+                {
+                    AlreadyYielded = false;
+                    Pather.CurrentPathIndex = 0;
+                    ReturnToPool();
+                }
+            }
+
+
         }
         else
         {
-            RayCastBack();
-            Walker.LaneMultiplier = -0.15f;
-            if (Walker.Progress == 0f)
+            if (Pather.GoingForward)
             {
-                SetNextEdge(Pather.CurrentPathIndex);
+                RayCastFrontEdge();
 
-                Pather.CurrentPathIndex++;
+                if(Walker.Progress > 0.8f && !AlreadyYielded)
+                {
+                    if (!Yielding)
+                    {
+
+                        StartCoroutine("YieldIntersection", UnityEngine.Random.Range(3f, 5f));
+                    }
+                }
+
+                Walker.LaneMultiplier = 0.15f;
+                if (Walker.Progress == 1f)
+                {
+                    AlreadyYielded = false;
+                    SetNextEdge(Pather.CurrentPathIndex);
+                }
+            }
+            else
+            {
+                RayCastBackEdge();
+
+                if (Walker.Progress < 0.2f && !AlreadyYielded)
+                {
+                    if (!Yielding)
+                    {
+                        
+                        StartCoroutine("YieldIntersection", UnityEngine.Random.Range(3f, 5f));
+                    }
+                }
+
+                Walker.LaneMultiplier = -0.15f;
+                if (Walker.Progress == 0f)
+                {
+                    AlreadyYielded = false;
+                    SetNextEdge(Pather.CurrentPathIndex);
+                }
             }
         }
 
-        
+        Vector3 moveDirection = gameObject.transform.position - lastPosition;
+        if (moveDirection != Vector3.zero)
+        {
+            float angle = Mathf.Atan2(moveDirection.y, moveDirection.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+        }
+        lastPosition = gameObject.transform.position;
 
     }
 
@@ -98,24 +146,30 @@ public class CarAI : MonoBehaviour
     public void SetNextEdge(int currentNodeIndex)
     {
         Pather.CurrentNode = Pather.Path[currentNodeIndex];
-        Pather.NextNode = Pather.Path[currentNodeIndex + 1];
 
-        Walker.Spline = Pather.GetNextEdge();
-        Walker.GoingForward = Pather.GoingForward;
-        if (Pather.GoingForward)
+        if(currentNodeIndex < Pather.Path.Count - 1)
         {
-            Walker.Progress = 0f;
+            Pather.NextNode = Pather.Path[currentNodeIndex + 1];
+
+            Walker.Spline = Pather.GetNextEdge();
+            Walker.GoingForward = Pather.GoingForward;
+            if (Pather.GoingForward)
+            {
+                Walker.Progress = 0f;
+            }
+            else
+            {
+                Walker.Progress = 1f;
+            }
+            
         }
-        else
-        {
-            Walker.Progress = 1f;
-        }
+        Pather.CurrentPathIndex++;
 
     }
 
 
 
-    private void RayCastFront()
+    private void RayCastFrontEdge()
     {
         RaycastHit hit;
         
@@ -124,7 +178,7 @@ public class CarAI : MonoBehaviour
             CarAI RaycastHitAI = hit.transform.gameObject.GetComponent<CarAI>();
             if(RaycastHitAI != this)
             {
-                Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
+                //Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
                 if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < CautionDistance)
                 {
                     if(Walker.Duration < RaycastHitAI.Walker.Duration)
@@ -142,12 +196,30 @@ public class CarAI : MonoBehaviour
                     {
                         Walker.Duration = RaycastHitAI.Walker.Duration;
                     }
+
+                    if(RaycastHitAI.Walker.Halt)
+                    {
+                        Walker.Halt = true;
+                    }
+                    else
+                    {
+                        if (!Yielding)
+                        {
+                            Walker.Halt = false;
+                        }
+                    }
                 }
             }
             else
             {
+                if(!Yielding)
+                {
+                    Walker.Halt = false;
+                }
+                
                 if (Walker.Duration > MaxSpeed)
                 {
+
                     Walker.Duration -= Acceleration;
                 }
                 else
@@ -158,7 +230,11 @@ public class CarAI : MonoBehaviour
         }
         else
         {
-            if(Walker.Duration > MaxSpeed)
+            if (!Yielding)
+            {
+                Walker.Halt = false;
+            }
+            if (Walker.Duration > MaxSpeed)
             {
                 Walker.Duration -= Acceleration;
             }
@@ -169,17 +245,17 @@ public class CarAI : MonoBehaviour
         }
     }
 
-    private void RayCastBack()
+    private void RayCastBackEdge()
     {
         RaycastHit hit;
-        
+
         if (Physics.Raycast(gameObject.transform.position, Walker.Back(), out hit, LookDistance, CollisionDetectionLayer))
         {
-            
+
             CarAI RaycastHitAI = hit.transform.gameObject.GetComponent<CarAI>();
             if (RaycastHitAI != this)
             {
-                Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
+                //Debug.DrawLine(gameObject.transform.position, RaycastHitAI.transform.position, Color.red, LookDistance);
                 if (Vector3.Distance(transform.position, RaycastHitAI.transform.position) < CautionDistance)
                 {
                     if (Walker.Duration < RaycastHitAI.Walker.Duration)
@@ -197,10 +273,25 @@ public class CarAI : MonoBehaviour
                     {
                         Walker.Duration = RaycastHitAI.Walker.Duration;
                     }
+                    if (RaycastHitAI.Walker.Halt)
+                    {
+                        Walker.Halt = true;
+                    }
+                    else
+                    {
+                        if (!Yielding)
+                        {
+                            Walker.Halt = false;
+                        }
+                    }
                 }
             }
             else
             {
+                if (!Yielding)
+                {
+                    Walker.Halt = false;
+                }
                 if (Walker.Duration > MaxSpeed)
                 {
                     Walker.Duration -= Acceleration;
@@ -213,6 +304,10 @@ public class CarAI : MonoBehaviour
         }
         else
         {
+            if (!Yielding)
+            {
+                Walker.Halt = false;
+            }
             if (Walker.Duration > MaxSpeed)
             {
                 Walker.Duration -= Acceleration;
@@ -228,5 +323,21 @@ public class CarAI : MonoBehaviour
 
 
 
-    
+
+
+    private IEnumerator YieldIntersection(float duration)
+    {
+        Yielding = true;
+        Walker.Halt = true;
+        //Debug.Log("Yielding for " + duration + " seconds");
+        yield return new WaitForSeconds(duration);
+        Yielding = false;
+        Walker.Halt = false;
+        AlreadyYielded = true;
+        yield return null;
+    }
+
+
+
+
 }

@@ -174,7 +174,6 @@ public class NodeMap : MonoBehaviour
 
     public void RemoveAllNeighbors(Node node)
     {
-        var edgesToRemove = new List<Edge>();
         var nodeNeighborsToRemove = new List<Node>();
 
         foreach (Node n in node.Neighbors)
@@ -192,7 +191,6 @@ public class NodeMap : MonoBehaviour
 
     public void RemoveNeighbors(Node node, List<Node> neighborsToRemove)
     {
-        var edgesToRemove = new List<Edge>();
         var nodeNeighborsToRemove = new List<Node>();
 
         foreach (Node n in neighborsToRemove)
@@ -210,9 +208,6 @@ public class NodeMap : MonoBehaviour
 
     public void NearestNeighborsConnectNodes(List<Node> nodes)
     {
-        var directions = new List<Vector3>();
-        var directionStartNodes = new List<Node>();
-        var intersectPoints = new List<Vector3>();
 
 
         // TO DO: Add layermask code
@@ -337,7 +332,6 @@ public class NodeMap : MonoBehaviour
         }
 
 
-        var intersectPoints = new List<Vector3>();
 
         for (int i = 0; i < directionStartNodes.Count; i++)
         {
@@ -381,15 +375,13 @@ public class NodeMap : MonoBehaviour
 
                         float distance2Intersect1 = Vector3.Distance(directionStartNodes[i].transform.position, closestPoint1);
                         float distance2Node1 = Vector3.Distance(directionStartNodes[i].transform.position, nodeHitPosition1);
-                        float distance2Intersect2 = Vector3.Distance(directionStartNodes[j].transform.position, closestPoint1);
-                        float distance2Node2 = Vector3.Distance(directionStartNodes[j].transform.position, nodeHitPosition2);
 
                         if (distance2Intersect1 < distance2Node1)
                         {
                             if (!Physics.CheckSphere(closestPoint1, 0.5f))
                             {
                                 Debug.Log("No node found at intersect point, adding a node");
-                                Node intersectNode = AddNode(closestPoint1);
+                                AddNode(closestPoint1);
                             }
                         }
                     }
@@ -684,8 +676,8 @@ public class NodeMap : MonoBehaviour
             }
                 
 
-        Debug.Log("Matrix has been updated");
-        PrintMatrixFormatted();
+        //Debug.Log("Matrix has been updated");
+        //PrintMatrixFormatted();
     }
 
     /// <summary>

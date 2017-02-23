@@ -19,18 +19,6 @@ public class CarPather : MonoBehaviour
     public bool PathReady = false;
     public bool GoingForward = true;
 
-    private void Awake()
-    {
-        Init();
-    }
-
-    private void Init()
-    {
-        CurrentPathIndex = 0;
-        Path = new List<Node>();
-        GetRandomPath(20);
-        CurrentPathIndex++;
-    }
 
     /// <summary>
     /// Test method to get a random path
