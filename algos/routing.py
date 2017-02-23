@@ -26,15 +26,18 @@ class VertexNonExistent(Exception):
 class NonOverlappingEndVertices(Exception):
     pass
 
+
+class NonPowerOf2Graph(Exception):
+    pass
+
 # =============================================================================
 
 
 # Types / Structs =============================================================
 
-RepSet = NamedTuple("RepSet", [('set', FrozenSet), ('rep', int)])
-HDS_Element = FrozenSet[RepSet]
+HDS_Element = FrozenSet[FrozenSet]
 HDS = List[HDS_Element]
-HDT_Node = NamedTuple("HDT_Node", [('repset', RepSet), ('level', int)])
+HDT_Node = NamedTuple("HDT_Node", [('set', FrozenSet), ('level', int)])
 
 # =============================================================================
 
@@ -62,6 +65,19 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
+    def r_neighborhood(G, v: float, r: float) -> FrozenSet[int]:
+        """Get the set of vertices that are within r distance of v.
+        """
+        try:
+            nbhd = nx.single_source_dijkstra_path_length(
+                G, v, cutoff=r
+            )
+        except KeyError:
+            raise VertexNonExistent
+
+        return frozenset(nbhd.keys())
+
+    @staticmethod
     def randomized_HDS_gen(G, pi=None, U=None) -> HDS:
         """Generate a HDS based on given or randomly generated paramters.
         Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
@@ -79,11 +95,9 @@ class GraphUtils:
         # print("Random num: {}".format(U))
 
         h = int(log2(G._diam))
-        H = [None] * (h + 1)  # type: HDS
+        H = [None] * (h + 1)  # type: List[FrozenSet[FrozenSet]]
 
-        # @TODO: does root of tree have a representative?
-        # Trying out an arbitrary member as the representative
-        H[h] = frozenset([RepSet(V, pi[0])])
+        H[h] = frozenset([V])
 
         vertex_dict = {}
         for v in V:
@@ -93,7 +107,7 @@ class GraphUtils:
             H_i = set()
 
             for C in H[i+1]:
-                cluster_set = C.set
+                cluster_set = C
                 for v in cluster_set:
                     v_ver = vertex_dict[v]
                     v_ver.cluster = set()
@@ -102,7 +116,9 @@ class GraphUtils:
                     v_ver.rep = None
                     for j in pi:
                         # @TODO: think about doing memoization for speedup
-                        v_neighborhood = G.r_neighborhood(v, U * 2**(i-1))
+                        v_neighborhood = \
+                            GraphUtils.r_neighborhood(G, v, U * 2**(i-1))
+
                         if j in (cluster_set & v_neighborhood):
                             v_ver.rep = j
                             break
@@ -121,14 +137,14 @@ class GraphUtils:
                 for v in cluster_set:
                     v_ver = vertex_dict[v]
                     if v_ver.cluster:
-                        H_i.add(RepSet(frozenset(v_ver.cluster), v_ver.rep))
+                        H_i.add(frozenset(v_ver.cluster))
 
             H[i] = frozenset(H_i)
 
         return H
 
     @staticmethod
-    def hds_to_hdt(hds: HDS):
+    def HDS_to_HDT(hds: HDS):
         G = nx.Graph()
 
         for i in reversed(range(0, len(hds) - 1)):
@@ -139,7 +155,7 @@ class GraphUtils:
                 added_parent = False
                 for Cp in hds[i+1]:
                     parent_node = HDT_Node(Cp, i+1)
-                    if C.set <= Cp.set:
+                    if C <= Cp:
                         G.add_edge(node, parent_node)
                         added_parent = True
                         break
@@ -164,38 +180,83 @@ class GraphUtils:
     @staticmethod
     def projection(G, hdt_path: List[HDT_Node]) -> List[int]:
         starting_node = hdt_path[0]  # type: HDT_Node
+        prev_representative = np.random.choice(tuple(starting_node.set))
 
         # Setting this up for easy calls to merge function later
-        projection_path = [starting_node.repset.rep]
+        projection_path = [prev_representative]
 
-        #traversed_root = False
-
-        prev_repset = None
-        for hdt_node in hdt_path:
-            repset = hdt_node.repset
-
-            if not prev_repset:
-                prev_repset = repset
-                continue
-
-            # @TODO: does root of tree have a representative?
-            #if not repset.rep:
-            #    # Only the root node should have a non-true representative.
-            #    # If this triggers, then more than one node has non-true
-            #    # representative.
-            #    assert(traversed_root is False)
-
-            #    traversed_root = True
-            #    continue
+        for hdt_node in hdt_path[1:]:
+            representative = np.random.choice(tuple(hdt_node.set))
 
             projection_path = GraphUtils.merge(
                 projection_path,
-                nx.dijkstra_path(G, prev_repset.rep, repset.rep)
+                nx.dijkstra_path(G, prev_representative, representative)
             )
 
-            prev_repset = repset
+            prev_representative = representative
 
         return projection_path
+
+    @staticmethod
+    def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
+        for i, delta_partition in enumerate(hds):
+            v_neighborhood = GraphUtils.r_neighborhood(G, v, alpha * (2 ** i))
+            is_subset = False
+
+            for cluster in delta_partition:
+
+                if v_neighborhood <= cluster:
+                    is_subset = True
+                    break
+
+            if not is_subset:
+                return False
+
+        return True
+
+    @staticmethod
+    def integral_scheme_generation(G, const=27):
+        if GraphUtils.graph_diameter(G) % 2 != 0:
+            raise NonPowerOf2Graph
+
+        V = set(G.nodes())
+        num_iterations = const * int(log2(len(G.nodes())))
+
+        HDST_list = [None] * num_iterations
+        for i in range(0, num_iterations):
+            hds = GraphUtils.randomized_HDS_gen(G)
+            hdt = GraphUtils.HDS_to_HDT(hds)
+
+            HDST_list[i] = (hds, hdt)
+
+        S = {}
+        # @TODO: choose alpha based on book
+        alpha = np.random.uniform(.5, 1)
+
+        for s in V:
+            for t in V - {s}:
+                tree = None
+
+                for i in range(0, num_iterations):
+                    hds, hdt = HDST_list[i]
+
+                    s_alpha_padded = \
+                        GraphUtils.check_alpha_padded(G, hds, alpha, s)
+                    t_alpha_padded = \
+                        GraphUtils.check_alpha_padded(G, hds, alpha, t)
+
+                    if s_alpha_padded and t_alpha_padded:
+                        tree = hdt
+
+                # s and/or t are not alpha-padded in any of the generated
+                # HDS's
+                assert(tree is not None)
+
+                # @TODO: continue here
+                # s_node = (,0)
+                # t_node = (,0)
+
+        return S
 
 
 class GraphDiam2h(nx.MultiDiGraph):
@@ -247,18 +308,6 @@ class GraphDiam2h(nx.MultiDiGraph):
         np_mat = vec_func(np_mat)
 
         return np_mat
-
-    def r_neighborhood(self, v, r: float) -> Set[int]:
-        """Get the set of vertices that are within r distance of v.
-        """
-        try:
-            nbhd = nx.single_source_dijkstra_path_length(
-                self, v, cutoff=r
-            )
-        except KeyError:
-            raise VertexNonExistent
-
-        return set(nbhd.keys())
 
 
 class Routing(object):
