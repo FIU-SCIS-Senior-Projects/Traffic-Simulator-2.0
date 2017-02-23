@@ -2,7 +2,7 @@ import numpy as np
 import networkx as nx
 
 from math import ceil, log2
-from typing import Any, List, Set, FrozenSet, NamedTuple
+from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
 
 
 # Custom Exceptions ===========================================================
@@ -42,16 +42,6 @@ HDT_Node = NamedTuple("HDT_Node", [('set', FrozenSet), ('level', int)])
 # =============================================================================
 
 
-class Vertex(object):
-    # Trying to reduce object size by using __slots__
-    __slots__ = ['rep', 'cluster', 'flag']
-
-    def __init__(self, rep, cluster, flag):
-        self.rep = rep
-        self.cluster = cluster
-        self.flag = flag
-
-
 class GraphUtils:
     @staticmethod
     def graph_diameter(G):
@@ -82,6 +72,16 @@ class GraphUtils:
         """Generate a HDS based on given or randomly generated paramters.
         Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
         """
+
+        class Vertex(object):
+            # Trying to reduce object size by using __slots__
+            __slots__ = ['rep', 'cluster', 'flag']
+
+            def __init__(self, rep, cluster, flag):
+                self.rep = rep
+                self.cluster = cluster
+                self.flag = flag
+
         num_vertices = len(G.nodes())
         V = frozenset(np.arange(num_vertices))
 
@@ -215,7 +215,8 @@ class GraphUtils:
         return True
 
     @staticmethod
-    def integral_scheme_generation(G, const=27):
+    def integral_scheme_generation(
+            G, const=27) -> Dict[Tuple[int, int], List[int]]:
         if GraphUtils.graph_diameter(G) % 2 != 0:
             raise NonPowerOf2Graph
 
@@ -229,9 +230,9 @@ class GraphUtils:
 
             HDST_list[i] = (hds, hdt)
 
-        S = {}
+        S = {}  # type: Dict[Tuple[int, int], List[int]]
         # @TODO: choose alpha based on book
-        alpha = np.random.uniform(.5, 1)
+        alpha = 0.5
 
         for s in V:
             for t in V - {s}:
@@ -247,14 +248,16 @@ class GraphUtils:
 
                     if s_alpha_padded and t_alpha_padded:
                         tree = hdt
+                        break
 
-                # s and/or t are not alpha-padded in any of the generated
-                # HDS's
+                # s and/or t are not alpha-padded in any of the generated HDS's
                 assert(tree is not None)
 
-                # @TODO: continue here
-                # s_node = (,0)
-                # t_node = (,0)
+                s_node = HDT_Node(frozenset([s]), 0)
+                t_node = HDT_Node(frozenset([t]), 0)
+
+                path = nx.dijkstra_path(tree, s_node, t_node)
+                S[(s, t)] = GraphUtils.projection(G, path)
 
         return S
 
