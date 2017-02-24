@@ -232,8 +232,7 @@ class GraphUtils:
             HDST_list[i] = (hds, hdt)
 
         S = {}  # type: Dict[Tuple[int, int], List[int]]
-        # @TODO: choose alpha based on book
-        alpha = 0.5
+        alpha = min((1 / log2(len(V))), 1/8)
 
         for s in V:
             for t in V - {s}:
