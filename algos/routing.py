@@ -105,7 +105,7 @@ class GraphUtils:
         for v in V:
             vertex_dict[v] = Vertex(None, None, True)
 
-        for i in reversed(range(0, h)):
+        for i in reversed(range(h)):
             H_i = set()
 
             for C in H[i+1]:
@@ -149,7 +149,7 @@ class GraphUtils:
     def HDS_to_HDT(hds: HDS):
         G = nx.Graph()
 
-        for i in reversed(range(0, len(hds) - 1)):
+        for i in reversed(range(len(hds) - 1)):
             for C in hds[i]:
                 node = HDT_Node(C, i)
                 G.add_node(node)
@@ -165,6 +165,25 @@ class GraphUtils:
                 assert(added_parent is True)
 
         return G
+
+    @staticmethod
+    def compress_path(path: List[Any]) -> List[Any]:
+        """Remove any cycles from a given path.
+        """
+        v_dict = {}
+        new_path = []
+        for i in reversed(range(len(path))):
+            v = path[i]
+            if v not in v_dict:
+                v_dict[v] = i
+                new_path.append(v)
+            else:
+                popped = new_path.pop()
+                while popped != v:
+                    popped = new_path.pop()
+                new_path.append(popped)
+
+        return list(reversed(new_path))
 
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
@@ -197,7 +216,7 @@ class GraphUtils:
 
             prev_representative = representative
 
-        return projection_path
+        return GraphUtils.compress_path(projection_path)
 
     @staticmethod
     def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
@@ -225,7 +244,7 @@ class GraphUtils:
         num_iterations = const * int(log2(len(G.nodes())))
 
         HDST_list = [None] * num_iterations
-        for i in range(0, num_iterations):
+        for i in range(num_iterations):
             hds = GraphUtils.randomized_HDS_gen(G)
             hdt = GraphUtils.HDS_to_HDT(hds)
 
@@ -238,7 +257,7 @@ class GraphUtils:
             for t in V - {s}:
                 tree = None
 
-                for i in range(0, num_iterations):
+                for i in range(num_iterations):
                     hds, hdt = HDST_list[i]
 
                     s_alpha_padded = \
