@@ -170,20 +170,20 @@ class GraphUtils:
     def compress_path(path: List[Any]) -> List[Any]:
         """Remove any cycles from a given path.
         """
-        v_dict = {}
+        previously_seen = set()
         new_path = []
-        for i in reversed(range(len(path))):
-            v = path[i]
-            if v not in v_dict:
-                v_dict[v] = i
-                new_path.append(v)
-            else:
+        for v in reversed(path):
+            if v in previously_seen:
                 popped = new_path.pop()
                 while popped != v:
+                    previously_seen.remove(popped)
                     popped = new_path.pop()
                 new_path.append(popped)
+            else:
+                previously_seen.add(v)
+                new_path.append(v)
 
-        return list(reversed(new_path))
+        return reversed(new_path)
 
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
