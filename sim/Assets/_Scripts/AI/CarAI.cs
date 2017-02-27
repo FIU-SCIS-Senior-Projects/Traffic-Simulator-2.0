@@ -21,6 +21,7 @@ public class CarAI : PooledObject
     public LayerMask NodeDetectionLayer;
     public SplineWalker Walker;
     public CarPather Pather;
+    public bool NonAPICar;
 
     private Vector3 lastPosition;
     private bool CheckingCollisions;
@@ -35,6 +36,13 @@ public class CarAI : PooledObject
 
         Walker.Duration = MaxSpeed;
         lastPosition = gameObject.transform.position;
+
+        Material mat = GetComponent<MeshRenderer>().material;
+        if (NonAPICar)
+        {
+            mat.SetColor("_Color", Color.black);
+        }
+
     }
 
     // For Object Pooling
@@ -48,6 +56,11 @@ public class CarAI : PooledObject
     /// </summary>
     protected void Update()
     {
+        if(Pather.Path == null)
+        {
+            return;
+        }
+
         if(Walker.GoingForward)
         {
             Walker.LaneMultiplier = LaneOffset;

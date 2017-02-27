@@ -4,7 +4,6 @@ using UnityEngine;
 using System.Linq;
 using System;
 using Unitilities.Tuples;
-using UnityEditor;
 
 /// <summary>
 /// Class used to build Graphs out of Nodes and Edges
@@ -56,7 +55,6 @@ public class NodeMap : MonoBehaviour
     public Node AddNode(Vector3 spawnPoint)
     {
         GameObject nodeObj = Instantiate(NodePrefab, spawnPoint, Quaternion.identity);
-        Undo.RegisterCreatedObjectUndo(nodeObj, "Created node");
         nodeObj.transform.parent = transform;
         Node newNode = nodeObj.AddComponent<Node>();
         newNode.Init();

@@ -73,14 +73,14 @@ public class APIController : MonoBehaviour
         headers.Add("Content-Type", "application/json");
         byte[] body = Encoding.UTF8.GetBytes(json);
         WWW www = new WWW(url, body, HashtableToDictionary<string, string>(headers));
-
+        Debug.Log("Requesting data from Web Service");
         StartCoroutine(PostdataEnumerator(www, callback, paths));
     }
 
     private IEnumerator PostdataEnumerator(WWW www, PostDataCallback callback, List<string> paths)
     {
         yield return www;
-        Debug.Log("Data Submitted");
+        Debug.Log("Data Recieved from Web Service");
         if (www.error != null)
         {
             //Debug.Log("Printing API Errors");
@@ -89,8 +89,8 @@ public class APIController : MonoBehaviour
         }
         else
         {
-            //Debug.Log("Printing API Response");
-            //Debug.Log(www.text);
+            Debug.Log("Printing Web Service Response");
+            Debug.Log(www.text);
             paths.Add(www.text);
             callback();
         }

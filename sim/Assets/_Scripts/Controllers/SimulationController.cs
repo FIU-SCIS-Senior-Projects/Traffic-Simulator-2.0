@@ -11,21 +11,30 @@ using UnityEngine;
 public class SimulationController : MonoBehaviour
 {
     public CarAI[] CarPrefabs;
-    public FloatRange TimeBetweenSpawns;
-    public FloatRange RushHourTimeBetweenSpawns;
-    public int Algorithm;
+    [SerializeField]
+    public float TimeBetweenSpawns { get; set; }
+
+
+    [SerializeField]
+    public int Algorithm
+    {
+        get { return m_Algorithm; }
+        set { m_Algorithm = value; }
+    }
+    public int m_Algorithm;
+
     public int TotalPaths;
+    public int MaxCars;
     public float SetGraphInterval;
-    public float FullSimInterval;
-    public float RushHourStartTime;
-    public float RushHourEndTime;
     private float CurrentSimTime;
     public List<Node> StartNodes;
     public List<Node> EndNodes;
+    public List<Node> NonAPIPath;
+    public List<Node> NonAPIPathReverse;
 
     private float timeSinceLastSpawn;
     private float currentSpawnDelay;
-    private NodeMap Map;
+    public NodeMap Map;
     private List<CarAI> Cars;
     private List<Node> Nodes;
     private List<string> JsonPaths;
@@ -39,7 +48,7 @@ public class SimulationController : MonoBehaviour
     /// </summary>
     private void Init()
     {
-        Map = GameObject.FindObjectOfType<NodeMap>();
+        TimeBetweenSpawns = 0.05f;
         stats = GetComponent<SimulationStats>();
         stats.Init(Map, Map.EdgeList.ToArray());
 
@@ -48,7 +57,7 @@ public class SimulationController : MonoBehaviour
             Nodes = Map.NodeList;
         }
 
-        JSONHelper.SaveJsonFile(AdjMatrixToJSON());
+
         API = GetComponent<APIController>();
         GetPathCount = 0;
         JsonPaths = new List<string>();
@@ -77,11 +86,6 @@ public class SimulationController : MonoBehaviour
     private void Update()
     {
         CurrentSimTime += Time.deltaTime;
-        if (CurrentSimTime > FullSimInterval)
-        {
-            CurrentSimTime = 0;
-        }
-
     }
 
 
@@ -90,22 +94,22 @@ public class SimulationController : MonoBehaviour
     /// </summary>
     private void FixedUpdate()
     {
-        if(GetPathCount == TotalPaths)
+        if (GetPathCount == TotalPaths)
         {
             timeSinceLastSpawn += Time.deltaTime;
             if (timeSinceLastSpawn >= currentSpawnDelay)
             {
                 timeSinceLastSpawn -= currentSpawnDelay;
-                if(CurrentSimTime < RushHourStartTime || CurrentSimTime > RushHourEndTime)
+                currentSpawnDelay = TimeBetweenSpawns;
+
+
+                if(stats.TotalCarsRouted < MaxCars)
                 {
-                    currentSpawnDelay = TimeBetweenSpawns.RandomInRange;
-                }
-                else
-                {
-                    currentSpawnDelay = RushHourTimeBetweenSpawns.RandomInRange;
+                    SpawnCar(JsonPaths[UnityEngine.Random.Range(0, JsonPaths.Count)]);
                 }
                 
-                SpawnCar(JsonPaths[UnityEngine.Random.Range(0, JsonPaths.Count)]);
+                SpawnNonAPICar(NonAPIPath);
+                SpawnNonAPICar(NonAPIPathReverse);
             }
         }
     }
@@ -118,10 +122,27 @@ public class SimulationController : MonoBehaviour
     {
         CarAI car = CarPrefabs[UnityEngine.Random.Range(0, CarPrefabs.Length)].GetPooledInstance<CarAI>();
         car.transform.localScale.Set(0.25f, 0.15f, 0.25f);
-
+        car.NonAPICar = false;
         car.Init();
 
         List<Node> path = PathFromJSON(jsonPath);
+
+        car.Pather.Map = Map;
+        car.Pather.Path = path;
+        car.SetNextEdge(0);
+        car.Pather.PathReady = true;
+    }
+
+    /// <summary>
+    /// Instantiates a CarAI object and sets its path
+    /// </summary>
+    /// <param name="jsonPath"></param>
+    private void SpawnNonAPICar(List<Node> path)
+    {
+        CarAI car = CarPrefabs[UnityEngine.Random.Range(0, CarPrefabs.Length)].GetPooledInstance<CarAI>();
+        car.transform.localScale.Set(0.25f, 0.15f, 0.25f);
+        car.NonAPICar = true;
+        car.Init();
 
         car.Pather.Map = Map;
         car.Pather.Path = path;
@@ -135,9 +156,9 @@ public class SimulationController : MonoBehaviour
     /// <returns></returns>
     private IEnumerator SetGraph()
     {
-        while(true)
+        while (true)
         {
-            string url = "localhost:5000/init_graph_unity";
+            string url = "http://localhost:5000/init_graph_unity";
             string inputJson = AdjMatrixToJSON();
 
             PostDataCallback callback = StartGetPaths;
@@ -182,15 +203,15 @@ public class SimulationController : MonoBehaviour
             startIndex = Nodes.IndexOf(startNode);
             endIndex = Nodes.IndexOf(endNode);
 
-            float coinToss = UnityEngine.Random.Range(0f,1f);
+            float coinToss = UnityEngine.Random.Range(0f, 1f);
 
-            if(coinToss > 0.5f)
+            if (coinToss > 0.5f)
             {
-                GetPath(startIndex, endIndex, Algorithm);
+                GetPath(startIndex, endIndex, m_Algorithm);
             }
             else
             {
-                GetPath(endIndex, startIndex, Algorithm);
+                GetPath(endIndex, startIndex, m_Algorithm);
             }
         }
     }
@@ -203,7 +224,7 @@ public class SimulationController : MonoBehaviour
     /// <param name="algo"></param>
     private void GetPath(int startIndex, int endIndex, int algo)
     {
-        string url = "localhost:5000/get_path";
+        string url = "http://localhost:5000/get_path";
         string inputJson = "{\"algorithm\":" + algo.ToString() + ",\"source\":" + startIndex.ToString() + ",\"target\":" + endIndex.ToString() + "}";
 
         PostDataCallback callback = OnGetPathComplete;
@@ -224,26 +245,25 @@ public class SimulationController : MonoBehaviour
     /// <returns></returns>
     private string AdjMatrixToJSON()
     {
-        NodeMap map = FindObjectOfType<NodeMap>();
-        map.UpdateAllNodes(false);
-        map.UpdateAdjMatrix();
+        Map.UpdateAllNodes(false);
+        Map.UpdateAdjMatrix();
 
         stats.CalcEdgeWeights();
 
-        AdjacencyMatrixRow[] Matrix = new AdjacencyMatrixRow[map.NodeList.Count];
+        AdjacencyMatrixRow[] Matrix = new AdjacencyMatrixRow[Map.NodeList.Count];
 
-        for(int i = 0; i < map.NodeList.Count; i++)
+        for (int i = 0; i < Map.NodeList.Count; i++)
         {
             List<float> row = new List<float>();
-            for(int j = 0; j < map.NodeList.Count; j++)
+            for (int j = 0; j < Map.NodeList.Count; j++)
             {
-                row.Add(map.AdjMatrix[i,j]);
+                row.Add(Map.AdjMatrix[i, j]);
             }
             Matrix[i] = new AdjacencyMatrixRow();
             Matrix[i].row = row;
         }
 
-        return JSONHelper.ToJson(Matrix, true);
+        return JSONHelper.ToJson(Matrix, false);
     }
 
     /// <summary>
@@ -267,7 +287,5 @@ public class SimulationController : MonoBehaviour
         return path;
     }
 
-    
+
 }
-
-
