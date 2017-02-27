@@ -2,6 +2,9 @@
 using System.IO;
 using UnityEngine;
 
+/// <summary>
+/// Helper class to make conversion to JSON easier
+/// </summary>
 public static class JSONHelper
 {
     public static T[] FromJson<T>(string json)

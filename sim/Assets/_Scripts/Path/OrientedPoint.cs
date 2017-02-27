@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Class to represent a point with an orientation
+/// </summary>
 public class OrientedPoint
 {
     public Vector3 position;

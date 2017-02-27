@@ -6,6 +6,9 @@ using System;
 using Unitilities.Tuples;
 using UnityEditor;
 
+/// <summary>
+/// Class used to build Graphs out of Nodes and Edges
+/// </summary>
 [Serializable]
 public class NodeMap : MonoBehaviour
 {
@@ -433,7 +436,6 @@ public class NodeMap : MonoBehaviour
                 n.gameObject.name = "Node" + NodeObjList.Count;
             }
         }
-        UpdateAdjMatrix();
         UpdateAllEdges(resetEdges);
     }
 
@@ -691,11 +693,11 @@ public class NodeMap : MonoBehaviour
 
         if (AdjMatrix == null)
         {
-            //Debug.Log("Adjacency matrix is empty.  Try adding some nodes.");
+            Debug.Log("Adjacency matrix is empty.  Try adding some nodes.");
             return;
         }
 
-        //Debug.Log("Printing Adjacency Matrix");
+        Debug.Log("Printing Adjacency Matrix");
         string printRow = "";
         string printMatrix = "";
         for (int i = 0; i < AdjMatrix.GetLength(0); i++)

@@ -4,8 +4,14 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
+/// <summary>
+/// Callback delegate
+/// </summary>
 public delegate void PostDataCallback();
 
+/// <summary>
+/// Class to make API calls
+/// </summary>
 public class APIController : MonoBehaviour
 {
     //Invoke this function where to want to make request.
