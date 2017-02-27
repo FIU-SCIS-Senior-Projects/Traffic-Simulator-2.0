@@ -183,7 +183,7 @@ class GraphUtils:
                 previously_seen.add(v)
                 new_path.append(v)
 
-        return reversed(new_path)
+        return list(reversed(new_path))
 
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
