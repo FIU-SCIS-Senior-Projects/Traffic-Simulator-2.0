@@ -23,15 +23,14 @@ public class SplineWalker : MonoBehaviour
 
     public Vector3 PositionOffset;
 
-    public bool Halt = false;
+    public bool Halt;
 
     /// <summary>
     /// Each step of the path
     /// </summary>
     protected void Step()
     {
-        if (Halt)
-            return;
+            
 
         if (GoingForward)
         {
@@ -74,22 +73,7 @@ public class SplineWalker : MonoBehaviour
 
         //Debug.DrawRay(transform.position, CurrentDirection);
 
-        if (LookForward)
-        {
-            if(GoingForward)
-            {
-                Vector2 dir = Spline.GetDirection(Progress);
-                float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-                transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
-            }
-            else
-            {
-                Vector2 dir = Spline.GetDirection(Progress);
-                dir = dir - 2 * dir;
-                float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-                transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
-            }
-        }
+
     }
 
     public Vector3 Forward()
@@ -105,6 +89,10 @@ public class SplineWalker : MonoBehaviour
 
     private void Update()
     {
-        Step();
+        if(!Halt)
+        {
+            Step();
+        }
+        
     }
 }

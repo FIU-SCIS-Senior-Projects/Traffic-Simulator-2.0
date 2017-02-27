@@ -36,13 +36,12 @@ public class NodeMapInspectorWindow : EditorWindow
     private NodeMap map;
     private Vector3 spawnPoint;
     private Vector3 spawnOffset;
-    int GridOffset = 5;
-    int GridRows = 5;
-    int GridColumns = 5;
+    private int GridOffset = 5;
+    private int GridRows = 5;
+    private int GridColumns = 5;
 
     private List<Node> selectedNodes;
     private List<Edge> selectedEdges;
-    private int selectedConnectionIndex = 0;
     private AnimBool showMoreOptions;
     private string prefabName = "NodeMap1";
 

@@ -1,9 +1,10 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Static Bezier class to handle common Bezier functions
+/// </summary>
 public static class Bezier
 {
-
-
     public static Vector3 GetPoint(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
     {
         t = Mathf.Clamp01(t);
@@ -57,7 +58,4 @@ public static class Bezier
         Vector3 normal = GetNormal3D(p0, p1, p2, p3, t, up);
         return Quaternion.LookRotation(tangent, normal);
     }
-
-
-
 }

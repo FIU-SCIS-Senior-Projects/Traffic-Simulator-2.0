@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// Class used in Procedural Mesh generation
+/// The shape the the mesh will extrude in
+/// </summary>
 public class ExtrudeShape
 {
     public Vector2[] Verts;

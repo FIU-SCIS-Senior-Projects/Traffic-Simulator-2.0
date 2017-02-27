@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Helper class for ensure a Unique Mesh is used
+/// </summary>
 public class UniqueMesh : MonoBehaviour
 {
     [HideInInspector]

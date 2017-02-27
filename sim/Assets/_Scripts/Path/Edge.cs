@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 
-
+/// <summary>
+/// The edge class used in the Graph
+/// </summary>
 [Serializable]
 public class Edge : MonoBehaviour
 {

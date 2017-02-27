@@ -1,6 +1,10 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
+/// <summary>
+/// Custom Editor for Edge Objects
+/// Allows user to manipulate controls points of bezier splin using Unity Handles
+/// </summary>
 [CustomEditor(typeof(Edge))]
 public class EdgeInspector : Editor
 {
