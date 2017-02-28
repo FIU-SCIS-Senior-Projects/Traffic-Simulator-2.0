@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['trafficSimFlask.py'],
-             pathex=['C:\\Projects\\Traffic-Simulator-1.0\\algos'],
+             pathex=['..\\algos\\routing.py', 'C:\\Projects\\Traffic-Simulator-1.0\\algos'],
              binaries=[],
              datas=[],
              hiddenimports=['flask'],
