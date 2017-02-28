@@ -40,7 +40,7 @@ public class CarAI : PooledObject
         Material mat = GetComponent<MeshRenderer>().material;
         if (NonAPICar)
         {
-            mat.SetColor("_Color", Color.black);
+            mat.SetColor("_Color", Color.red);
         }
 
     }

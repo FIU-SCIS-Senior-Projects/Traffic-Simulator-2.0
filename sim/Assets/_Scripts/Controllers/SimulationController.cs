@@ -14,6 +14,8 @@ public class SimulationController : MonoBehaviour
     [SerializeField]
     public float TimeBetweenSpawns { get; set; }
 
+    [SerializeField]
+    public bool TrafficJam { get; set; }
 
     [SerializeField]
     public int Algorithm
@@ -49,6 +51,7 @@ public class SimulationController : MonoBehaviour
     private void Init()
     {
         TimeBetweenSpawns = 0.05f;
+        TrafficJam = false;
         stats = GetComponent<SimulationStats>();
         stats.Init(Map, Map.EdgeList.ToArray());
 
@@ -108,8 +111,12 @@ public class SimulationController : MonoBehaviour
                     SpawnCar(JsonPaths[UnityEngine.Random.Range(0, JsonPaths.Count)]);
                 }
                 
-                SpawnNonAPICar(NonAPIPath);
-                SpawnNonAPICar(NonAPIPathReverse);
+                if(TrafficJam)
+                {
+                    SpawnNonAPICar(NonAPIPath);
+                    SpawnNonAPICar(NonAPIPathReverse);
+                }
+
             }
         }
     }
