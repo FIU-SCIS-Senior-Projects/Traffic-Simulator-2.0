@@ -362,7 +362,6 @@ class Routing(object):
 
         elif algo == 1:
             path = self._top_down_integral_scheme[(s, t)]
-            path = [int(x) for x in path]
 
         else:
             raise UnknownAlgorithm
