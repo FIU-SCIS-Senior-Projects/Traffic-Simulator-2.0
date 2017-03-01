@@ -357,15 +357,16 @@ class Routing(object):
         if algo == 0:
             try:
                 path = nx.dijkstra_path(self._graph, s, t)
-                # @TODO: why is networkx spitting out numpy int64's as the
-                # nodes?
-                path = [int(x) for x in path]
             except KeyError:  # One of the vertices is not in graph
                 raise VertexNonExistent
+
         elif algo == 1:
             path = self._top_down_integral_scheme[(s, t)]
 
         else:
             raise UnknownAlgorithm
+
+        # @TODO: why is networkx spitting out numpy int64's as the nodes?
+        path = [int(v) for v in path]
 
         return path
