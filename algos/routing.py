@@ -386,16 +386,19 @@ class Routing(object):
 
         original_mat = np.matrix(M)
         in_out_mat = GraphUtils.create_in_out_mat(original_mat)
+        num_vertices = original_mat.shape[0]
 
-        self._original_vertices = original_mat.shape[0]
         self._graph = GraphDiam2h(in_out_mat)
         self._in_out_top_down_integral_scheme = \
             GraphUtils.top_down_integral_scheme_generation(self._graph)
 
+        # Filterting out all keys which contain nodes that have been generated
+        # in the in_out graph generation. Also removing all the new in_out
+        # nodes from the generated paths.
         self._top_down_integral_scheme = {
-            key: [v for v in val if v < self._original_vertices]
+            key: [v for v in val if v < num_vertices]
             for key, val in self._in_out_top_down_integral_scheme.items()
-            if key[0] < self._original_vertices and key[1] < self._original_vertices
+            if key[0] < num_vertices and key[1] < num_vertices
         }
 
     def get_path(self, algo, s, t: int) -> List[int]:
