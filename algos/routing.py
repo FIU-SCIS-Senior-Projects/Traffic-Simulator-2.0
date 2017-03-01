@@ -70,6 +70,39 @@ class GraphUtils:
         return frozenset(nbhd.keys())
 
     @staticmethod
+    def create_pow2_diameter_mat(np_mat):
+        """Out of an adjacency matrix which denotes some graph G = (V, E, w)
+        create an adjacency matrix which denotes some graph G' = (V, E, w_c)
+        with diameter equal to some power of 2.
+
+        NOTE:
+            The given adjacency matrix MUST denote a STRONGLY connected graph.
+
+        """
+        # Negative weights delimit a non-existent edge between two nodes, which
+        # is equivalent to edge weight of infinity. 0.0 will be used to
+        # represent a non-existent edge as this is what networkx seems to
+        # expect in order to not have an edge between the two nodes.
+        np_mat[np_mat < 0.0] = 0.0
+        G_min_edge = np_mat[np_mat > 0.0].min()
+
+        epsilon = np.float(0.01)
+        mult_const = np.float((1 + epsilon) / G_min_edge)
+        # @TODO: check to see if there's a faster way of doing this
+        vec_func = np.vectorize(lambda x: mult_const * x, otypes=[np.float])
+        np_mat = vec_func(np_mat)
+
+        G_p = nx.DiGraph(np_mat)
+        G_p_diam = GraphUtils.graph_diameter(G_p)
+
+        mult_const = ((2 ** ceil(log2(G_p_diam))) / G_p_diam)
+        # @TODO: check to see if there's a faster way of doing this
+        vec_func = np.vectorize(lambda x:  mult_const * x, otypes=[np.float])
+        np_mat = vec_func(np_mat)
+
+        return np_mat
+
+    @staticmethod
     def randomized_HDS_gen(G, pi=None, U=None) -> HDS:
         """Generate a HDS based on given or randomly generated paramters.
         Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
@@ -235,9 +268,25 @@ class GraphUtils:
         return True
 
     @staticmethod
-    def integral_scheme_generation(
+    def check_num_pow2(num):
+        num_type = type(num)
+        if num_type is not int:
+            if (num_type is not float or
+                num_type is not np.float or
+                num_type is not np.float32 or
+                num_type is not np.float64 or
+                num_type is not np.float128) and \
+                not num.is_integer():
+                raise TypeError("num is not an integer.")
+            
+            num = int(num)
+
+        return num != 0 and num & (num - 1) == 0
+
+    @staticmethod
+    def top_down_integral_scheme_generation(
             G, const=27) -> Dict[Tuple[int, int], List[int]]:
-        if GraphUtils.graph_diameter(G) % 2 != 0:
+        if not GraphUtils.check_num_pow2(GraphUtils.graph_diameter(G)):
             raise NonPowerOf2Graph
 
         V = set(G.nodes())
@@ -280,54 +329,49 @@ class GraphUtils:
 
         return S
 
+    @staticmethod
+    def create_in_out_mat(M, new_weight=np.float64(1)):
+        """Every node in the represented graph G is broken up into two nodes.
+        One of those two nodes represents an "in" node and the other an "out"
+        node. The "in" node retains all incoming edges from the original node,
+        with one outgoing edge into the new "out" node. The "out" node retains
+        all outgoing edges from the original node. The directed edge from "in"
+        to "out" node is given a new weight (random or specified), while all
+        original edges retain their original weight.
+        """
+        if M.shape[0] != M.shape[1]:
+            raise NonSquareMatrix
 
-class GraphDiam2h(nx.MultiDiGraph):
-    def __init__(self, M: List[List[float]]) -> None:
+        i, j = M.shape[0], M.shape[1]
+        new_i, new_j = i*2, j*2
+        new_matrix = np.zeros((new_i, new_j), dtype=np.float64)
+
+        # Copying old matrix M into bottom left of the new matrix
+        new_matrix[i:new_i, 0:j] = M
+
+        # Diagonal of top right square corresponds to the edge weight from
+        # in to out vertices
+        np.fill_diagonal(
+            new_matrix[0:new_i, j:new_j],
+            new_weight
+        )
+
+        return new_matrix
+
+
+class GraphDiam2h(nx.DiGraph):
+    def __init__(self, M) -> None:
         if M is None:
             raise EmptyMatrixProvided
 
-        adj_mat = np.matrix(M)
-
-        if adj_mat.shape[0] != adj_mat.shape[1]:
+        if M.shape[0] != M.shape[1]:
             raise NonSquareMatrix
 
-        self._mat = self._convert_power_of_2_diameter(adj_mat)
+        self._mat = GraphUtils.create_pow2_diameter_mat(M)
 
         super(GraphDiam2h, self).__init__(self._mat)
 
         self._diam = GraphUtils.graph_diameter(self)
-
-    def _convert_power_of_2_diameter(self, np_mat):
-        """Convert any adjacency matrix which denotes some graph G = (V, E, w)
-        into an adjacency matrix which denotes some graph G' = (V, E, w_c) with
-        diameter equal to some power of 2.
-
-        NOTE:
-            The given adjacency matrix MUST denote a STRONGLY connected graph.
-
-        """
-        # Negative weights delimit a non-existent edge between two nodes, which
-        # is equivalent to edge weight of infinity. 0.0 will be used to
-        # represent a non-existent edge as this is what networkx seems to
-        # expect in order to not have an edge between the two nodes.
-        np_mat[np_mat < 0.0] = 0.0
-        G_min_edge = np_mat[np_mat > 0.0].min()
-
-        epsilon = np.float(0.01)
-        mult_const = np.float((1 + epsilon) / G_min_edge)
-        # @TODO: check to see if there's a faster way of doing this
-        vec_func = np.vectorize(lambda x: mult_const * x, otypes=[np.float])
-        np_mat = vec_func(np_mat)
-
-        G_p = nx.MultiDiGraph(np_mat)
-        G_p_diam = GraphUtils.graph_diameter(G_p)
-
-        mult_const = ((2 ** ceil(log2(G_p_diam))) / G_p_diam)
-        # @TODO: check to see if there's a faster way of doing this
-        vec_func = np.vectorize(lambda x:  mult_const * x, otypes=[np.float])
-        np_mat = vec_func(np_mat)
-
-        return np_mat
 
 
 class Routing(object):
@@ -340,9 +384,19 @@ class Routing(object):
         if M is None:
             return
 
-        self._graph = GraphDiam2h(M)
-        self._top_down_integral_scheme = \
-            GraphUtils.integral_scheme_generation(self._graph)
+        original_mat = np.matrix(M)
+        in_out_mat = GraphUtils.create_in_out_mat(original_mat)
+
+        self._original_vertices = original_mat.shape[0]
+        self._graph = GraphDiam2h(in_out_mat)
+        self._in_out_top_down_integral_scheme = \
+            GraphUtils.top_down_integral_scheme_generation(self._graph)
+
+        self._top_down_integral_scheme = {
+            key: [v for v in val if v < self._original_vertices]
+            for key, val in self._in_out_top_down_integral_scheme.items()
+            if key[0] < self._original_vertices and key[1] < self._original_vertices
+        }
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
