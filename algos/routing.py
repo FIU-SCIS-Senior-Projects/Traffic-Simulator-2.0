@@ -271,14 +271,16 @@ class GraphUtils:
     def check_num_pow2(num):
         num_type = type(num)
         if num_type is not int:
-            if (num_type is not float or
-                num_type is not np.float or
-                num_type is not np.float32 or
-                num_type is not np.float64 or
-                num_type is not np.float128) and \
+            if (isinstance(num_type, float) or
+                isinstance(num_type, np.float) or
+                isinstance(num_type, np.float32) or
+                isinstance(num_type, np.float64) or
+                isinstance(num_type, np.float128)) and \
                 not num.is_integer():
-                raise TypeError("num is not an integer.")
-            
+                raise TypeError(
+                    "{} is not an integer. Type: {}".format(num, type(num))
+                )
+
             num = int(num)
 
         return num != 0 and num & (num - 1) == 0
@@ -381,6 +383,7 @@ class Routing(object):
     def set_graph(self, M: List[List[float]]) -> None:
         """Generate the necessary objects that the algorithms will work on.
         """
+        self._graph = None
         if M is None:
             return
 
