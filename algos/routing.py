@@ -274,9 +274,7 @@ class GraphUtils:
             if (isinstance(num_type, float) or
                 isinstance(num_type, np.float) or
                 isinstance(num_type, np.float32) or
-                isinstance(num_type, np.float64) or
-                isinstance(num_type, np.float128)) and \
-                not num.is_integer():
+                isinstance(num_type, np.float64)) and not num.is_integer():
                 raise TypeError(
                     "{} is not an integer. Type: {}".format(num, type(num))
                 )
