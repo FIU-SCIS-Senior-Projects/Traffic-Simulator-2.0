@@ -13,8 +13,8 @@ def initialize_graph():
     json_data = request.get_json(force=True)
 
     router.set_graph(json_data['map'])
-    success = router._graph is not None
-    return "The graph was initialized: {success}.".format(**locals())
+
+    return "The graph was initialized."
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
 def init_graph_unity():
