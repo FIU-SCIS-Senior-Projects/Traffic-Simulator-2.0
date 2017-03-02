@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -14,11 +15,15 @@ public delegate void PostDataCallback();
 /// </summary>
 public class APIController : MonoBehaviour
 {
+    private Stopwatch stopwatch = new Stopwatch();
+
+
     //Invoke this function where to want to make request.
     public void GetData(string url)
     {
         //sending the request to url
         WWW www = new WWW(url);
+        stopwatch.Start();
         StartCoroutine("GetdataEnumerator", www);
     }
 
@@ -27,15 +32,17 @@ public class APIController : MonoBehaviour
        
         //Wait for request to complete
         yield return www;
+        stopwatch.Stop();
+        UnityEngine.Debug.Log("Post request completed" + "\nCompleted in " + stopwatch.ElapsedMilliseconds + "ms.");
         if (www.error != null)
         {
             string serviceData = www.text;
             //Data is in json format, we need to parse the Json.
-            Debug.Log(serviceData);
+            UnityEngine.Debug.Log(serviceData);
         }
         else
         {
-            Debug.Log(www.error);
+            UnityEngine.Debug.Log(www.error);
         }
     }
 
@@ -45,24 +52,23 @@ public class APIController : MonoBehaviour
         headers.Add("Content-Type", "application/json");
         byte[] body = Encoding.UTF8.GetBytes(json);
         WWW www = new WWW(url, body, HashtableToDictionary<string, string>(headers));
-
+        stopwatch.Start();
         StartCoroutine(PostdataEnumerator(www, callback));
     }
 
     private IEnumerator PostdataEnumerator(WWW www, PostDataCallback callback)
     {
         yield return www;
-        Debug.Log("Data Submitted");
+        
+        stopwatch.Stop();
+        UnityEngine.Debug.Log("Post request completed" + "\nCompleted in " + stopwatch.ElapsedMilliseconds + "ms.");
         if (www.error != null)
         {
-            //Debug.Log("Printing API Errors");
-            
-            Debug.Log(www.error);
+            UnityEngine.Debug.Log("Error returned from API: \n" + www.error + "\nCompleted in ");
         }
         else
         {
-            //Debug.Log("Printing API Response");
-            //Debug.Log(www.text);
+            UnityEngine.Debug.Log("Response returned from API: \n" + www.text);
             callback();
         }
     }
@@ -73,24 +79,24 @@ public class APIController : MonoBehaviour
         headers.Add("Content-Type", "application/json");
         byte[] body = Encoding.UTF8.GetBytes(json);
         WWW www = new WWW(url, body, HashtableToDictionary<string, string>(headers));
-        Debug.Log("Requesting data from Web Service");
+        stopwatch.Start();
         StartCoroutine(PostdataEnumerator(www, callback, paths));
     }
 
     private IEnumerator PostdataEnumerator(WWW www, PostDataCallback callback, List<string> paths)
     {
         yield return www;
-        Debug.Log("Data Recieved from Web Service");
+        stopwatch.Stop();
+        UnityEngine.Debug.Log("Post request completed" + "\nCompleted in " + stopwatch.ElapsedMilliseconds + "ms.");
         if (www.error != null)
         {
-            //Debug.Log("Printing API Errors");
-
-            Debug.Log(www.error);
+            
+            UnityEngine.Debug.Log("Error returned from API: \n" + www.error + "\nCompleted in ");
         }
         else
         {
-            Debug.Log("Printing Web Service Response");
-            Debug.Log(www.text);
+            UnityEngine.Debug.Log("Response returned from API: \n" + www.text + "\nCompleted in ");
+
             paths.Add(www.text);
             callback();
         }
