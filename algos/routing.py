@@ -103,6 +103,18 @@ class GraphUtils:
         return np_mat
 
     @staticmethod
+    def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
+        routing_scheme = {}
+
+        all_pairs_dict = nx.all_pairs_dijkstra_path(G)
+
+        for s in all_pairs_dict:
+            for t in all_pairs_dict[s]:
+                routing_scheme[(s, t)] = all_pairs_dict[s][t]
+
+        return routing_scheme
+
+    @staticmethod
     def randomized_HDS_gen(G, pi=None, U=None) -> HDS:
         """Generate a HDS based on given or randomly generated paramters.
         Using Algorithm 3.1 (Fakcharoenphol's Algorithm).
@@ -203,8 +215,8 @@ class GraphUtils:
     def compress_path(path: List[Any]) -> List[Any]:
         """Remove any cycles from a given path.
         """
-        previously_seen = set()
-        new_path = []
+        previously_seen = set()  # type: Set
+        new_path = []  # type: List
         for v in reversed(path):
             if v in previously_seen:
                 popped = new_path.pop()
@@ -327,6 +339,9 @@ class GraphUtils:
                 path = nx.dijkstra_path(tree, s_node, t_node)
                 S[(s, t)] = GraphUtils.projection(G, path)
 
+        for v in V:
+            S[(v, v)] = [v]
+
         return S
 
     @staticmethod
@@ -390,16 +405,28 @@ class Routing(object):
         num_vertices = original_mat.shape[0]
 
         self._graph = GraphDiam2h(in_out_mat)
+        self._in_out_dijkstra_scheme = \
+            GraphUtils.dijkstra_routing_scheme(self._graph)
         self._in_out_top_down_integral_scheme = \
             GraphUtils.top_down_integral_scheme_generation(self._graph)
 
         # Filterting out all keys which contain nodes that have been generated
-        # in the in_out graph generation. Also removing all the new in_out
-        # nodes from the generated paths.
+        # in the in_out graph generation. Also removing all the new out nodes
+        # from the generated paths.
+        self._dijkstra_scheme = {
+            key: [v for v in val if v < num_vertices]
+            for key, val in self._in_out_dijkstra_scheme.items()
+            if key[0] < num_vertices and key[1] < num_vertices
+        }
         self._top_down_integral_scheme = {
             key: [v for v in val if v < num_vertices]
             for key, val in self._in_out_top_down_integral_scheme.items()
             if key[0] < num_vertices and key[1] < num_vertices
+        }
+
+        self._routing_schemes = {
+            0: self._dijkstra_scheme,
+            1: self._top_down_integral_scheme,
         }
 
     def get_path(self, algo, s, t: int) -> List[int]:
@@ -408,21 +435,14 @@ class Routing(object):
         if self._graph is None:
             raise GraphNotSet
 
-        if s == t:
-            return [s]
-
         path = []  # type: List[int]
-        if algo == 0:
-            try:
-                path = nx.dijkstra_path(self._graph, s, t)
-            except KeyError:  # One of the vertices is not in graph
-                raise VertexNonExistent
-
-        elif algo == 1:
-            path = self._top_down_integral_scheme[(s, t)]
-
-        else:
+        if algo not in self._routing_schemes:
             raise UnknownAlgorithm
+
+        try:
+            path = self._routing_schemes[algo][(s, t)]
+        except KeyError:  # One of the vertices is not in graph
+            raise VertexNonExistent
 
         # @TODO: why is networkx spitting out numpy int64's as the nodes?
         path = [int(v) for v in path]
