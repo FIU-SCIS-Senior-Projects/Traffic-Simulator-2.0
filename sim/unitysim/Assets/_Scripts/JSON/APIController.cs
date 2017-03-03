@@ -15,7 +15,7 @@ public delegate void PostDataCallback();
 /// </summary>
 public class APIController : MonoBehaviour
 {
-    private Stopwatch stopwatch = new Stopwatch();
+
 
 
     //Invoke this function where to want to make request.
@@ -23,13 +23,14 @@ public class APIController : MonoBehaviour
     {
         //sending the request to url
         WWW www = new WWW(url);
-        stopwatch.Start();
+        
         StartCoroutine("GetdataEnumerator", www);
     }
 
     private IEnumerator GetdataEnumerator(WWW www)
     {
-       
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
         //Wait for request to complete
         yield return www;
         stopwatch.Stop();
@@ -52,12 +53,13 @@ public class APIController : MonoBehaviour
         headers.Add("Content-Type", "application/json");
         byte[] body = Encoding.UTF8.GetBytes(json);
         WWW www = new WWW(url, body, HashtableToDictionary<string, string>(headers));
-        stopwatch.Start();
         StartCoroutine(PostdataEnumerator(www, callback));
     }
 
     private IEnumerator PostdataEnumerator(WWW www, PostDataCallback callback)
     {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
         yield return www;
         
         stopwatch.Stop();
@@ -79,12 +81,13 @@ public class APIController : MonoBehaviour
         headers.Add("Content-Type", "application/json");
         byte[] body = Encoding.UTF8.GetBytes(json);
         WWW www = new WWW(url, body, HashtableToDictionary<string, string>(headers));
-        stopwatch.Start();
         StartCoroutine(PostdataEnumerator(www, callback, paths));
     }
 
     private IEnumerator PostdataEnumerator(WWW www, PostDataCallback callback, List<string> paths)
     {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
         yield return www;
         stopwatch.Stop();
         UnityEngine.Debug.Log("Post request completed" + "\nCompleted in " + stopwatch.ElapsedMilliseconds + "ms.");
