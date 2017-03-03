@@ -1,15 +1,11 @@
 from flask import Flask, request, jsonify
 import routing
 import json
-<<<<<<< HEAD
 import traceback
-=======
->>>>>>> 8aebbfee1c414cf4e6b97d4eb5c6386e0bd6fc3e
 
 app = Flask(__name__)
 router = routing.Routing()
 
-<<<<<<< HEAD
 
 log_file = 'log_file.txt'
 def log_messages(messages):
@@ -21,8 +17,6 @@ def log_messages(messages):
         lfile.write('==========================================\n')
 
 
-=======
->>>>>>> 8aebbfee1c414cf4e6b97d4eb5c6386e0bd6fc3e
 @app.route('/initialize_graph', methods=['GET', 'POST'])
 def initialize_graph():
     if request.method == 'GET':
@@ -30,7 +24,6 @@ def initialize_graph():
 
     json_data = request.get_json(force=True)
 
-<<<<<<< HEAD
     success = True
     try:
         router.set_graph(json_data['map'])
@@ -40,10 +33,7 @@ def initialize_graph():
         print(tb)
         log_messages([tb, json.dumps(json_data)])
 
-=======
     router.set_graph(json_data['map'])
-    success = router._graph is not None
->>>>>>> 8aebbfee1c414cf4e6b97d4eb5c6386e0bd6fc3e
     return "The graph was initialized: {success}.".format(**locals())
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
@@ -60,7 +50,6 @@ def init_graph_unity():
             adj_row.append(val)
         adj_mat.append(adj_row)
 
-<<<<<<< HEAD
     success = True
     try:
         router.set_graph(adj_mat)
@@ -70,10 +59,7 @@ def init_graph_unity():
         print(tb)
         log_messages([tb, json.dumps(json_data)])
 
-=======
     router.set_graph(adj_mat)
-    success = router._graph is not None
->>>>>>> 8aebbfee1c414cf4e6b97d4eb5c6386e0bd6fc3e
     return "The graph was initialized: {success}.".format(**locals())
 
 @app.route('/get_path', methods=['GET', 'POST'])
@@ -86,7 +72,6 @@ def get_path():
     algo = json_data['algorithm']
     source = json_data['source']
     target = json_data['target']
-<<<<<<< HEAD
 
     path = []
     try:
@@ -96,9 +81,6 @@ def get_path():
         print(tb)
         log_messages([tb, json.dumps(json_data)])
 
-=======
-    path = router.get_path(algo, source, target)
->>>>>>> 8aebbfee1c414cf4e6b97d4eb5c6386e0bd6fc3e
     return jsonify(map=path)
 
 
