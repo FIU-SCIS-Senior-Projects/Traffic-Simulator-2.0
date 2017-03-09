@@ -14,6 +14,7 @@ var geoDataFileName = "fiu_roads.geojson"
 
 // Node Graph
 var nodes = [];
+var adjacencyMatrix = [];
 
 // Set Map Properties
 var center = L.latLng(centerLat, centerLon);
@@ -26,9 +27,9 @@ var mapLayer = MQ.mapLayer()
 // Init Map
 var map = L.map('map', {
 	layers: mapLayer,
-    maxZoom: maxZ,
-    minZoom: minZ,
-    maxBounds: [southWestBound, northEastBound], 
+  maxZoom: maxZ,
+  minZoom: minZ,
+  maxBounds: [southWestBound, northEastBound], 
 }).setView(center, startZ);
 
 // Add Traffic data from Map Quest Plugin
@@ -45,30 +46,32 @@ L.control.layers({
 
 //Get json object for major highways
 $.getJSON(geoDataFileName, function( data ) {
-
   var count = 0;
-
   // iterate through geojson features 
   $.each(data.features, function (key, val) {
-
     var coords = [];
-
     // iterate through coordinates of the line feature
     $.each(val.geometry.coordinates, function(i,j){
         var point = [j[1], j[0]];
         coords.push(point);
     });
-
+    reverseCoords = ArrayReverse(coords);
     // make a node object based on the lines first coordinate 
     // and the associates set of coordinates that make up its edge
-    var node = {index: count, latlng: coords[0], edge: coords};
-    nodes.push(node);
+    var nodeA = {index: count, latlng: coords[0], edge: coords, type: "startNode"};
+    var nodeB = {index: ++count, latlng: coords[coords.length-1], edge: reverseCoords, type: "endNode"};
+    nodes.push(nodeA);
+    nodes.push(nodeB);
     count++;
+    // console.log(nodeA);
+    // console.log(nodeB);
      
   });
-
   // Just using this for visualization right now to help understand
   DrawNodes();
+  DrawPolylines();
+  InitAdjacencyMatrix();
+  PrintAdjacencyMatrix(); // for debugging
 });
 
 // Function to draw the nodes on the map
@@ -76,33 +79,101 @@ function DrawNodes()
 {
   for(var i = 0; i < nodes.length; i++)
   {
-    console.log(nodes[i]);
-
     var circle = L.circle(nodes[i].latlng, {
       color: 'red',
       fillColor: '#f03',
-      fillOpacity: 0.5,
+      fillOpacity: 0.1,
       radius: 5
     }).addTo(map);
   }
 }
 
+// Function to draw polylines between node neighbors on the map
+function DrawPolylines()
+{
+  for(var i = 0; i < nodes.length; i++)
+  {
+    for(var j = 0; j < nodes.length; j++)
+    {
+      if(IsNeighbor(nodes[i], nodes[j]))
+      {
+        var polyline = new L.Polyline(nodes[i].edge, {
+            color: 'blue',
+            weight: 3,
+            opacity: 0.1,
+            smoothFactor: 1
+        });
+        polyline.addTo(map);
+      }       
+    }
+  }
+}
+
+// Function to draw polylines between node neighbors on the map
+function InitAdjacencyMatrix()
+{
+  for(var i = 0; i < nodes.length; i++)
+  {
+    // the adjacency matrix row
+    var row = [];
+    for(var j = 0; j < nodes.length; j++)
+    {
+      if(i != j)
+      {
+        if(IsNeighbor(nodes[i], nodes[j]))
+        {
+          row.push(1);
+        }
+        else
+        {
+          row.push(0);
+        } 
+      }
+      else
+      {
+        row.push(0);
+      }   
+    }
+    adjacencyMatrix.push(row);
+  }
+}
+
+// Debug function to print out the adj matrix
+function PrintAdjacencyMatrix()
+{
+  console.log(adjacencyMatrix);
+}
+
 // Function to check if two nodes are neighbors (not using this yet)
 function IsNeighbor(nodeA, nodeB)
 {
-  return arraysEqual(nodeA.edge[edge.length-1], nodeB.edge[0]);
+  return  arraysEqual(nodeA.edge[nodeA.edge.length-1], nodeB.edge[0]) 
+          ||
+          arraysEqual(nodeA.latlng, nodeB.latlng);
 }
 
 // Helper to check if two arrays are equal
 function arraysEqual(arr1, arr2) {
     if(arr1.length !== arr2.length)
         return false;
+
     for(var i = arr1.length; i--;) {
         if(arr1[i] !== arr2[i])
             return false;
     }
-
     return true;
+}
+
+// helper function to store the reverse of an array without mutating the original and returning the reversed array
+// because in javascript Array.reverse() mutates the original before the console can print so its hard to debug
+function ArrayReverse(arr)
+{
+  reverseArr = [];
+  for(var i = arr.length-1; i > -1; i--)
+  {
+    reverseArr.push(arr[i]);
+  }
+  return reverseArr;
 }
 
 
