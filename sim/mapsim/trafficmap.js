@@ -128,10 +128,13 @@ function InitAdjacencyMatrix()
   {
     var indexA = edges[i].startNode.index;
     var indexB = edges[i].endNode.index;
-    adjacencyMatrix[indexA][indexB] = 1;
+    var latlngA = edges[i].startNode.latlng;
+    var latlngB = edges[i].endNode.latlng;
+    adjacencyMatrix[indexA][indexB] = 1 + EuclideanDistance(latlngA, latlngB);
   }
-}
 
+
+}
 
 // Debug function to print out the adj matrix
 function PrintAdjacencyMatrix()
@@ -139,8 +142,13 @@ function PrintAdjacencyMatrix()
   console.log(adjacencyMatrix);
 }
 
+function EuclideanDistance(coordsA, coordsB)
+{
+  return Math.sqrt(Math.pow((coordsB[0] - coordsA[0]), 2) + Math.pow((coordsB[1] - coordsA[1]), 2));
+}
+
 // Helper to check if two arrays are equal
-function arraysEqual(arr1, arr2) {
+function ArraysEqual(arr1, arr2) {
     if(arr1.length !== arr2.length)
         return false;
 
