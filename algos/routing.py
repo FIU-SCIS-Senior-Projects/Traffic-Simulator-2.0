@@ -46,6 +46,24 @@ HDT_Node = NamedTuple("HDT_Node", [('set', FrozenSet), ('level', int)])
 # =============================================================================
 
 
+class GraphDiam2h(nx.DiGraph):
+    def __init__(self, M) -> None:
+        if M is None:
+            raise EmptyMatrixProvided
+
+        if M.shape[0] != M.shape[1]:
+            raise NonSquareMatrix
+
+        self._mat = GraphUtils.create_pow2_diameter_mat(M)
+
+        super(GraphDiam2h, self).__init__(self._mat)
+
+        self._dists = nx.floyd_warshall_numpy(self)
+        # Removing any floating point imprecision. This has been constructed
+        # to be a power of 2, see Lemma 3.1 for more details.
+        self._diam = round(self._dists.max())
+
+
 class GraphUtils:
     @staticmethod
     def graph_diameter(G):
@@ -74,6 +92,8 @@ class GraphUtils:
         """Out of an adjacency matrix which denotes some graph G = (V, E, w)
         create an adjacency matrix which denotes some graph G' = (V, E, w_c)
         with diameter equal to some power of 2.
+
+        See Lemma 3.1 for more details.
 
         NOTE:
             The given adjacency matrix MUST denote a STRONGLY connected graph.
@@ -152,6 +172,8 @@ class GraphUtils:
 
         for i in reversed(range(h)):
             H_i = set()
+            r = U * 2**(i-1)
+            memoized_nbhds = {}
 
             for C in H[i+1]:
                 cluster_set = C
@@ -162,11 +184,15 @@ class GraphUtils:
 
                     v_ver.rep = None
                     for j in pi:
-                        # @TODO: think about doing memoization for speedup
-                        v_neighborhood = \
-                            GraphUtils.r_neighborhood(G, v, U * 2**(i-1))
+                        if (v, i) not in memoized_nbhds:
+                            # v_neighborhood = GraphUtils.r_neighborhood(G, v, r)
+                            # Get the r-neighborhood of v
+                            v_neighborhood = (G._dists[v] <= r).nonzero()[1]
+                            memoized_nbhds[(v,i)] = v_neighborhood
+                        else:
+                            v_neighborhood = memoized_nbhds[(v,i)]
 
-                        if j in (cluster_set & v_neighborhood):
+                        if j in cluster_set and j in v_neighborhood:
                             v_ver.rep = j
                             break
 
@@ -298,8 +324,8 @@ class GraphUtils:
     @staticmethod
     def top_down_integral_scheme_generation(
             G, const=27) -> Dict[Tuple[int, int], List[int]]:
-        if not GraphUtils.check_num_pow2(GraphUtils.graph_diameter(G)):
-            raise NonPowerOf2Graph
+        if not GraphUtils.check_num_pow2(G._diam):
+            raise NonPowerOf2Graph("{}".format(G._diam))
 
         V = set(G.nodes())
         num_iterations = const * int(log2(len(G.nodes())))
@@ -372,21 +398,6 @@ class GraphUtils:
         )
 
         return new_matrix
-
-
-class GraphDiam2h(nx.DiGraph):
-    def __init__(self, M) -> None:
-        if M is None:
-            raise EmptyMatrixProvided
-
-        if M.shape[0] != M.shape[1]:
-            raise NonSquareMatrix
-
-        self._mat = GraphUtils.create_pow2_diameter_mat(M)
-
-        super(GraphDiam2h, self).__init__(self._mat)
-
-        self._diam = GraphUtils.graph_diameter(self)
 
 
 class Routing(object):
