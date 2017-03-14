@@ -13,7 +13,7 @@ var startZ = 13;
 var geoDataFileName = "fiu_roads.geojson"
 
 // Node Graph
-var nodes = [];
+var edges = [];
 var adjacencyMatrix = [];
 
 // Set Map Properties
@@ -58,13 +58,17 @@ $.getJSON(geoDataFileName, function( data ) {
     reverseCoords = ArrayReverse(coords);
     // make a node object based on the lines first coordinate 
     // and the associates set of coordinates that make up its edge
-    var nodeA = {index: count, latlng: coords[0], edge: coords, type: "startNode"};
-    var nodeB = {index: ++count, latlng: coords[coords.length-1], edge: reverseCoords, type: "endNode"};
-    nodes.push(nodeA);
-    nodes.push(nodeB);
-    count++;
-    // console.log(nodeA);
-    // console.log(nodeB);
+    var nodeA = {index: count, latlng: coords[0], edge: coords, type: "A"};
+    var nodeB = {index: ++count, latlng: reverseCoords[0], edge: reverseCoords, type: "B"};
+
+    var edgeA = {startNode: nodeA, endNode: nodeB, points: coords};
+    var edgeB = {startNode: nodeB, endNode: nodeA, points: reverseCoords};
+
+    edges.push(edgeA);
+    edges.push(edgeB);
+    // count++;
+    //console.log(edgeA);
+    //console.log(edgeB);
      
   });
   // Just using this for visualization right now to help understand
@@ -77,9 +81,10 @@ $.getJSON(geoDataFileName, function( data ) {
 // Function to draw the nodes on the map
 function DrawNodes()
 {
-  for(var i = 0; i < nodes.length; i++)
+  for(var i = 0; i < edges.length; i++)
   {
-    var circle = L.circle(nodes[i].latlng, {
+    // Draw a circle where the node is
+    var circle = L.circle(edges[i].startNode.latlng, {
       color: 'red',
       fillColor: '#f03',
       fillOpacity: 0.1,
@@ -91,65 +96,47 @@ function DrawNodes()
 // Function to draw polylines between node neighbors on the map
 function DrawPolylines()
 {
-  for(var i = 0; i < nodes.length; i++)
+  for(var i = 0; i < edges.length; i++)
   {
-    for(var j = 0; j < nodes.length; j++)
-    {
-      if(IsNeighbor(nodes[i], nodes[j]))
-      {
-        var polyline = new L.Polyline(nodes[i].edge, {
-            color: 'blue',
-            weight: 3,
-            opacity: 0.1,
-            smoothFactor: 1
-        });
-        polyline.addTo(map);
-      }       
-    }
+    var polyline = new L.Polyline(edges[i].points, {
+        color: 'blue',
+        weight: 2,
+        opacity: 0.5,
+        smoothFactor: 1
+    });
+    polyline.addTo(map);      
   }
 }
 
-// Function to draw polylines between node neighbors on the map
+// Fills matrix with 0's first, then sets a 1 if there is a connection between two indeces
 function InitAdjacencyMatrix()
 {
-  for(var i = 0; i < nodes.length; i++)
+  // Fill matrix with 0's first
+  for(var i = 0; i < edges.length/2; i++)
   {
     // the adjacency matrix row
     var row = [];
-    for(var j = 0; j < nodes.length; j++)
+    for(var j = 0; j < edges.length/2; j++)
     {
-      if(i != j)
-      {
-        if(IsNeighbor(nodes[i], nodes[j]))
-        {
-          row.push(1);
-        }
-        else
-        {
-          row.push(0);
-        } 
-      }
-      else
-      {
-        row.push(0);
-      }   
+      row.push(0);  
     }
     adjacencyMatrix.push(row);
   }
+
+  // Set 1's for connected indeces
+  for(var i = 0; i < edges.length-1; i++)
+  {
+    var indexA = edges[i].startNode.index;
+    var indexB = edges[i].endNode.index;
+    adjacencyMatrix[indexA][indexB] = 1;
+  }
 }
+
 
 // Debug function to print out the adj matrix
 function PrintAdjacencyMatrix()
 {
   console.log(adjacencyMatrix);
-}
-
-// Function to check if two nodes are neighbors (not using this yet)
-function IsNeighbor(nodeA, nodeB)
-{
-  return  arraysEqual(nodeA.edge[nodeA.edge.length-1], nodeB.edge[0]) 
-          ||
-          arraysEqual(nodeA.latlng, nodeB.latlng);
 }
 
 // Helper to check if two arrays are equal
