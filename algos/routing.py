@@ -62,28 +62,28 @@ class GraphDiam2h(nx.DiGraph):
 
         super(GraphDiam2h, self).__init__(self._mat)
 
-        self._all_pairs_sp_and_length = \
+        self._all_sp, self._all_len = \
             GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
-        # Removing any floating point imprecision. This has been constructed
-        # to be a power of 2, see Lemma 3.1 for more details.
+
+        # Removing any floating point imprecision with round. This has been
+        # constructed to be a power of 2, see Lemma 3.1 for more details.
         self._diam = round(self._max_sp())
 
     def _max_sp(self):
         return max(
-            [dist[1] for dist in self._all_pairs_sp_and_length.values()]
+            [max(dists) for dists in self._all_len.values()]
         )
 
     def get_shortest_path(self, s, t):
-        return self._all_pairs_sp_and_length[(s, t)][0]
+        return self._all_sp[(s, t)]
 
     def get_shortest_path_length(self, s, t):
-        return self._all_pairs_sp_and_length[(s, t)][1]
+        return self._all_len[s][t]
 
     def r_neighborhood(self, s, r):
         num_nodes = len(self.nodes())
         return frozenset(
-            [v for v in range(num_nodes)
-            if self._all_pairs_sp_and_length[(s, v)][1] <= r]
+            [v for v in range(num_nodes) if self._all_len[s][v] <= r]
         )
 
 
@@ -148,10 +148,14 @@ class GraphUtils:
     @staticmethod
     def all_pairs_dijkstra_shortest_path_and_length(
             G) -> Dict[Tuple[int, int], Tuple[List[int], int]]:
-        path_length_dict = {}
         all_pairs = nx.all_pairs_dijkstra_path(G)
 
+        path_dict = {}
+        length_dict = {}
+
+        num_nodes = len(G.nodes())
         for s in all_pairs:
+            length_dict[s] = [0] * num_nodes
             for t in all_pairs[s]:
                 length = 0.0
                 prev = all_pairs[s][t][0]
@@ -159,9 +163,10 @@ class GraphUtils:
                     length += G[prev][v]['weight']
                     prev = v
 
-                path_length_dict[(s, t)] = (all_pairs[s][t], length)
+                path_dict[(s, t)] = all_pairs[s][t]
+                length_dict[s][t] = length
 
-        return path_length_dict
+        return path_dict, length_dict
 
     @staticmethod
     def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
@@ -226,13 +231,12 @@ class GraphUtils:
                     v_ver.rep = None
                     for j in pi:
                         if (v, i) not in memoized_nbhds:
-                            # Get the r-neighborhood of v
-                            v_neighborhood = G.r_neighborhood(v, r)
-                            memoized_nbhds[(v, i)] = v_neighborhood
+                            v_nbhd = G.r_neighborhood(v, r)
+                            memoized_nbhds[(v, i)] = v_nbhd
                         else:
-                            v_neighborhood = memoized_nbhds[(v, i)]
+                            v_nbhd = memoized_nbhds[(v, i)]
 
-                        if j in cluster_set and j in v_neighborhood:
+                        if j in cluster_set and j in v_nbhd:
                             v_ver.rep = j
                             break
 
@@ -332,11 +336,11 @@ class GraphUtils:
     @staticmethod
     def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
         for i, delta_partition in enumerate(hds):
-            v_neighborhood = GraphUtils.r_neighborhood(G, v, alpha * (2 ** i))
+            v_nbhd = GraphUtils.r_neighborhood(G, v, alpha * (2 ** i))
             is_subset = False
 
             for cluster in delta_partition:
-                if v_neighborhood <= cluster:
+                if v_nbhd <= cluster:
                     is_subset = True
                     break
 
