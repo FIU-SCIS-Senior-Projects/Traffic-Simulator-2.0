@@ -34,6 +34,10 @@ class NonPowerOf2Graph(Exception):
 class EmptyMatrixProvided(Exception):
     pass
 
+
+class NonLeafNodes(Exception):
+    pass
+
 # =============================================================================
 
 
@@ -58,10 +62,29 @@ class GraphDiam2h(nx.DiGraph):
 
         super(GraphDiam2h, self).__init__(self._mat)
 
-        self._dists = nx.floyd_warshall_numpy(self)
+        self._all_pairs_sp_and_length = \
+            GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
         # Removing any floating point imprecision. This has been constructed
         # to be a power of 2, see Lemma 3.1 for more details.
-        self._diam = round(self._dists.max())
+        self._diam = round(self._max_sp())
+
+    def _max_sp(self):
+        return max(
+            [dist[1] for dist in self._all_pairs_sp_and_length.values()]
+        )
+
+    def get_shortest_path(self, s, t):
+        return self._all_pairs_sp_and_length[(s, t)][0]
+
+    def get_shortest_path_length(self, s, t):
+        return self._all_pairs_sp_and_length[(s, t)][1]
+
+    def r_neighborhood(self, s, r):
+        num_nodes = len(self.nodes())
+        return frozenset(
+            [v for v in range(num_nodes)
+            if self._all_pairs_sp_and_length[(s, v)][1] <= r]
+        )
 
 
 class GraphUtils:
@@ -121,6 +144,24 @@ class GraphUtils:
         np_mat = vec_func(np_mat)
 
         return np_mat
+
+    @staticmethod
+    def all_pairs_dijkstra_shortest_path_and_length(
+            G) -> Dict[Tuple[int, int], Tuple[List[int], int]]:
+        path_length_dict = {}
+        all_pairs = nx.all_pairs_dijkstra_path(G)
+
+        for s in all_pairs:
+            for t in all_pairs[s]:
+                length = 0.0
+                prev = all_pairs[s][t][0]
+                for v in all_pairs[s][t][1:]:
+                    length += G[prev][v]['weight']
+                    prev = v
+
+                path_length_dict[(s, t)] = (all_pairs[s][t], length)
+
+        return path_length_dict
 
     @staticmethod
     def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
@@ -185,12 +226,11 @@ class GraphUtils:
                     v_ver.rep = None
                     for j in pi:
                         if (v, i) not in memoized_nbhds:
-                            # v_neighborhood = GraphUtils.r_neighborhood(G, v, r)
                             # Get the r-neighborhood of v
-                            v_neighborhood = (G._dists[v] <= r).nonzero()[1]
-                            memoized_nbhds[(v,i)] = v_neighborhood
+                            v_neighborhood = G.r_neighborhood(v, r)
+                            memoized_nbhds[(v, i)] = v_neighborhood
                         else:
-                            v_neighborhood = memoized_nbhds[(v,i)]
+                            v_neighborhood = memoized_nbhds[(v, i)]
 
                         if j in cluster_set and j in v_neighborhood:
                             v_ver.rep = j
@@ -282,7 +322,7 @@ class GraphUtils:
 
             projection_path = GraphUtils.merge(
                 projection_path,
-                nx.dijkstra_path(G, prev_representative, representative)
+                G.get_shortest_path(prev_representative, representative)
             )
 
             prev_representative = representative
@@ -320,6 +360,32 @@ class GraphUtils:
             num = int(num)
 
         return num != 0 and num & (num - 1) == 0
+
+    @staticmethod
+    def HDT_leaf_to_leaf_path(hdt, s: HDT_Node, t: HDT_Node):
+        if s.level != 0 or t.level != 0:
+            raise NonLeafNodes(
+                "{} and/or {} are not leafs in HDT.".format(s, t)
+            )
+
+        s_forward = [s]
+        t_backward = [t]
+
+        cur_lvl = 0
+        s_parent = s
+        t_parent = t
+        while s_parent != t_parent:
+            s_parent = \
+                [v for v in hdt.adj[s_parent] if v.level == (cur_lvl + 1)][0]
+            t_parent = \
+                [v for v in hdt.adj[t_parent] if v.level == (cur_lvl + 1)][0]
+
+            cur_lvl += 1
+            s_forward.append(s_parent)
+            t_backward.append(t_parent)
+
+        s_forward.extend(reversed(t_backward[:-1]))
+        return s_forward
 
     @staticmethod
     def top_down_integral_scheme_generation(
@@ -362,7 +428,7 @@ class GraphUtils:
                 s_node = HDT_Node(frozenset([s]), 0)
                 t_node = HDT_Node(frozenset([t]), 0)
 
-                path = nx.dijkstra_path(tree, s_node, t_node)
+                path = GraphUtils.HDT_leaf_to_leaf_path(tree, s_node, t_node)
                 S[(s, t)] = GraphUtils.projection(G, path)
 
         for v in V:
