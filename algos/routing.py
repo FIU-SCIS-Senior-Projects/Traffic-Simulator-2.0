@@ -4,7 +4,6 @@ import networkx as nx
 from math import ceil, log2
 from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
 
-
 # Custom Exceptions ===========================================================
 
 class NonSquareMatrix(Exception):
@@ -62,28 +61,28 @@ class GraphDiam2h(nx.DiGraph):
 
         super(GraphDiam2h, self).__init__(self._mat)
 
-        self._all_sp, self._all_len = \
+        self.all_pairs_sp, self.all_sp_len = \
             GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
 
         # Removing any floating point imprecision with round. This has been
         # constructed to be a power of 2, see Lemma 3.1 for more details.
-        self._diam = round(self._max_sp())
+        self.diam = round(self._max_sp())
+        self.num_nodes = len(self.nodes())
 
     def _max_sp(self):
         return max(
-            [max(dists) for dists in self._all_len.values()]
+            [max(dists) for dists in self.all_sp_len.values()]
         )
 
-    def get_shortest_path(self, s, t):
-        return self._all_sp[(s, t)]
+    def get_shortest_path(self, s, t: int) -> List[int]:
+        return self.all_pairs_sp[(s, t)]
 
-    def get_shortest_path_length(self, s, t):
-        return self._all_len[s][t]
+    def get_shortest_path_length(self, s, t: int) -> float:
+        return self.all_sp_len[s][t]
 
-    def r_neighborhood(self, s, r):
-        num_nodes = len(self.nodes())
+    def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
         return frozenset(
-            [v for v in range(num_nodes) if self._all_len[s][v] <= r]
+            [v for v in range(self.num_nodes) if self.all_sp_len[s][v] <= r]
         )
 
 
@@ -100,7 +99,7 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
-    def r_neighborhood(G, v: float, r: float) -> FrozenSet[int]:
+    def r_neighborhood(G, v: int, r: float) -> FrozenSet[int]:
         """Get the set of vertices that are within r distance of v.
         """
         try:
@@ -147,7 +146,8 @@ class GraphUtils:
 
     @staticmethod
     def all_pairs_dijkstra_shortest_path_and_length(
-            G) -> Dict[Tuple[int, int], Tuple[List[int], int]]:
+            G) -> Tuple[Dict[Tuple[int, int], List[int]],
+                        Dict[int, List[float]]]:
         all_pairs = nx.all_pairs_dijkstra_path(G)
 
         path_dict = {}
@@ -155,7 +155,7 @@ class GraphUtils:
 
         num_nodes = len(G.nodes())
         for s in all_pairs:
-            length_dict[s] = [0] * num_nodes
+            length_dict[s] = [0.0] * num_nodes
             for t in all_pairs[s]:
                 length = 0.0
                 prev = all_pairs[s][t][0]
@@ -207,7 +207,7 @@ class GraphUtils:
             U = np.random.uniform(.5, 1)
         # print("Random num: {}".format(U))
 
-        h = int(log2(G._diam))
+        h = int(log2(G.diam))
         H = [None] * (h + 1)  # type: List[FrozenSet[FrozenSet]]
 
         H[h] = frozenset([V])
@@ -219,7 +219,7 @@ class GraphUtils:
         for i in reversed(range(h)):
             H_i = set()
             r = U * 2**(i-1)
-            memoized_nbhds = {}
+            memoized_nbhds = {}  # type: Dict[Tuple[int, int], List[int]]
 
             for C in H[i+1]:
                 cluster_set = C
@@ -336,7 +336,7 @@ class GraphUtils:
     @staticmethod
     def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
         for i, delta_partition in enumerate(hds):
-            v_nbhd = GraphUtils.r_neighborhood(G, v, alpha * (2 ** i))
+            v_nbhd = G.r_neighborhood(v, alpha * (2 ** i))
             is_subset = False
 
             for cluster in delta_partition:
@@ -394,8 +394,8 @@ class GraphUtils:
     @staticmethod
     def top_down_integral_scheme_generation(
             G, const=27) -> Dict[Tuple[int, int], List[int]]:
-        if not GraphUtils.check_num_pow2(G._diam):
-            raise NonPowerOf2Graph("{}".format(G._diam))
+        if not GraphUtils.check_num_pow2(G.diam):
+            raise NonPowerOf2Graph("{}".format(G.diam))
 
         V = set(G.nodes())
         num_iterations = const * int(log2(len(G.nodes())))
