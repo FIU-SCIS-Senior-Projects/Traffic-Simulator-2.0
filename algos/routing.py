@@ -3,6 +3,8 @@ import networkx as nx
 
 from math import ceil, log2
 from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
+from array import array
+
 
 # Custom Exceptions ===========================================================
 
@@ -71,7 +73,7 @@ class GraphDiam2h(nx.DiGraph):
 
     def _max_sp(self):
         return max(
-            [max(dists) for dists in self.all_sp_len.values()]
+            [max(dists) for dists in self.all_sp_len]
         )
 
     def get_shortest_path(self, s, t: int) -> List[int]:
@@ -146,16 +148,15 @@ class GraphUtils:
 
     @staticmethod
     def all_pairs_dijkstra_shortest_path_and_length(
-            G) -> Tuple[Dict[Tuple[int, int], List[int]],
-                        Dict[int, List[float]]]:
+            G) -> Tuple[Dict[Tuple[int, int], List[int]], List[array]]:
         all_pairs = nx.all_pairs_dijkstra_path(G)
 
-        path_dict = {}
-        length_dict = {}
-
         num_nodes = len(G.nodes())
+
+        all_pairs_sp = {}
+        all_sp_lens = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
+
         for s in all_pairs:
-            length_dict[s] = [0.0] * num_nodes
             for t in all_pairs[s]:
                 length = 0.0
                 prev = all_pairs[s][t][0]
@@ -163,10 +164,10 @@ class GraphUtils:
                     length += G[prev][v]['weight']
                     prev = v
 
-                path_dict[(s, t)] = all_pairs[s][t]
-                length_dict[s][t] = length
+                all_pairs_sp[(s, t)] = all_pairs[s][t]
+                all_sp_lens[s][t] = length
 
-        return path_dict, length_dict
+        return all_pairs_sp, all_sp_lens
 
     @staticmethod
     def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
