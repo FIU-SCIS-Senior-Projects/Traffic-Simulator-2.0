@@ -10,7 +10,9 @@ var boundsDeltaLat = 0.1;
 var maxZ = 25;
 var minZ = 12;
 var startZ = 13;
-var geoDataFileName = "fiu_roads.geojson"
+var geoDataFileName = "fiu_roads.geojson";
+var InitGraphURL = "http://localhost:5000/initialize_graph";
+
 
 // Node Graph
 var edges = [];
@@ -75,8 +77,61 @@ $.getJSON(geoDataFileName, function( data ) {
   DrawNodes();
   DrawPolylines();
   InitAdjacencyMatrix();
-  PrintAdjacencyMatrix(); // for debugging
+  InitGraph();
+  //PrintAdjacencyMatrix(); // for debugging
 });
+
+function InitGraph()
+{
+  var jsonOBJ = {"map": adjacencyMatrix};
+  var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
+  AddDownloadButton(adjacencyMatrixJSON);
+
+  // Uncomment to test API Call locally
+  // $.post(InitGraphURL, function(data, status){
+  //   console.log("Data: " + data + "\nStatus: " + status);
+  // });
+
+}
+
+function AddDownloadButton(json)
+{
+  var downloadButton = L.easyButton('Center Map', function(btn, map){
+    var dl = document.createElement('a');
+    dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
+    dl.setAttribute('download', 'adjacencyMatrix.json');
+    dl.click();
+  }).addTo(map);
+}
+
+
+
+function CreateJsonDownloadLink(json)
+{
+  var ourCustomControl = L.Control.extend({
+
+    options: {
+      position: 'topleft' 
+      //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+    },
+
+    onAdd: function (map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom leaflet-control-button');
+
+        container.style.backgroundColor = 'white';
+        container.style.width = '30px';
+        container.style.height = '30px';
+
+        var dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(json);
+        container.setAttribute("href", "data:"+dataUri);
+        container.setAttribute("download", "data.json"); 
+        return container;
+      },
+
+  });
+
+  map.addControl(new ourCustomControl());
+}
 
 // Function to draw the nodes on the map
 function DrawNodes()
