@@ -34,7 +34,7 @@ def initialize_graph():
         log_messages([tb, json.dumps(json_data)])
 
     router.set_graph(json_data['map'])
-    return "The graph was initialized: {success}.".format(**locals())
+    return "The graph was initialized: {}.".format(success)
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
 def init_graph_unity():
@@ -60,7 +60,7 @@ def init_graph_unity():
         log_messages([tb, json.dumps(json_data)])
 
     router.set_graph(adj_mat)
-    return "The graph was initialized: {success}.".format(**locals())
+    return "The graph was initialized: {}.".format(success)
 
 @app.route('/get_path', methods=['GET', 'POST'])
 def get_path():
