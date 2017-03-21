@@ -496,12 +496,12 @@ class Routing(object):
         # in the in_out graph generation. Also removing all the new out nodes
         # from the generated paths.
         self._dijkstra_scheme = {
-            key: [v for v in val if v < num_vertices]
+            key: [int(v) for v in val if v < num_vertices]
             for key, val in self._in_out_dijkstra_scheme.items()
             if key[0] < num_vertices and key[1] < num_vertices
         }
         self._top_down_integral_scheme = {
-            key: [v for v in val if v < num_vertices]
+            key: [int(v) for v in val if v < num_vertices]
             for key, val in self._in_out_top_down_integral_scheme.items()
             if key[0] < num_vertices and key[1] < num_vertices
         }
@@ -525,8 +525,5 @@ class Routing(object):
             path = self._routing_schemes[algo][(s, t)]
         except KeyError:  # One of the vertices is not in graph
             raise VertexNonExistent
-
-        # @TODO: why is networkx spitting out numpy int64's as the nodes?
-        path = [int(v) for v in path]
 
         return path
