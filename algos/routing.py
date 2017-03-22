@@ -478,8 +478,7 @@ class Routing(object):
             algos: List[int] = None) -> None:
         self.set_graph(M, algos=algos)
 
-    def get_dijkstra_scheme(self, G):
-        num_vertices = len(G.nodes())
+    def get_dijkstra_scheme(self, G, remove_above):
         in_out_dijkstra_scheme = \
             GraphUtils.dijkstra_routing_scheme(G)
 
@@ -487,25 +486,24 @@ class Routing(object):
         # in the in_out graph generation. Also removing all the new out nodes
         # from the generated paths.
         dijkstra_scheme = {
-            key: [int(v) for v in val if v < num_vertices]
+            key: [int(v) for v in val if v < remove_above]
             for key, val in in_out_dijkstra_scheme.items()
-            if key[0] < num_vertices and key[1] < num_vertices
+            if key[0] < remove_above and key[1] < remove_above
         }
 
         return dijkstra_scheme
 
-    def get_top_down_integral_scheme(self, G):
-        num_vertices = len(G.nodes())
+    def get_top_down_integral_scheme(self, G, remove_above):
         in_out_top_down_integral_scheme = \
-            GraphUtils.top_down_integral_scheme_generation(self._graph)
+            GraphUtils.top_down_integral_scheme_generation(G)
 
         # Filterting out all keys which contain nodes that have been generated
         # in the in_out graph generation. Also removing all the new out nodes
         # from the generated paths.
         top_down_integral_scheme = {
-            key: [int(v) for v in val if v < num_vertices]
+            key: [int(v) for v in val if v < remove_above]
             for key, val in in_out_top_down_integral_scheme.items()
-            if key[0] < num_vertices and key[1] < num_vertices
+            if key[0] < remove_above and key[1] < remove_above
         }
 
         return top_down_integral_scheme
@@ -533,11 +531,11 @@ class Routing(object):
             for i in no_repetition:
                 if i in generate_schemes:
                     func = generate_schemes[i]
-                    self._routing_schemes[i] = func(self._graph)
+                    self._routing_schemes[i] = func(self._graph, num_vertices)
         else:
             # Generate all schemes if none were specified
             for i, func in generate_schemes.items():
-                self._routing_schemes[i] = func(self._graph)
+                self._routing_schemes[i] = func(self._graph, num_vertices)
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
