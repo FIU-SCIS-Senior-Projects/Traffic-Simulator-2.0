@@ -535,7 +535,7 @@ class Routing(object):
                     func = generate_schemes[i]
                     self._routing_schemes[i] = func(self._graph)
         else:
-            # Generate all schemes if non were specified
+            # Generate all schemes if none were specified
             for i, func in generate_schemes.items():
                 self._routing_schemes[i] = func(self._graph)
 
