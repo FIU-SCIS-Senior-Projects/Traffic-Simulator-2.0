@@ -78,39 +78,33 @@ $.getJSON(geoDataFileName, function( data ) {
   DrawPolylines();
   InitAdjacencyMatrix();
   InitGraph();
-  //PrintAdjacencyMatrix(); // for debugging
+  PrintAdjacencyMatrix(); // for debugging
 });
 
 function InitGraph()
 {
   var jsonOBJ = {"map": adjacencyMatrix};
   var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
-  //AddDownloadButton(adjacencyMatrixJSON);
+  AddDownloadButton(adjacencyMatrixJSON);
 
   console.log("sending init graph request to " + InitGraphURL);
 
-  // Regular JSON Call
-  // $.post(InitGraphURL, adjacencyMatrixJSON, function(data, status){
-  //   console.log("Data: " + data + "\nStatus: " + status);
+  // // API Call
+  // $.ajax({
+  //     url : InitGraphURL,
+  //     type: "POST",
+  //     data : adjacencyMatrixJSON,
+  //     dataType: "json",
+  //     //jsonpCallback: "logResults",
+  //     success: function(data, textStatus, jqXHR)
+  //     {
+  //         console.log("\nStatus: " + textStatus);
+  //     },
+  //     error: function (jqXHR, textStatus, errorThrown)
+  //     {
+  //         console.log("Status: " + textStatus + "\n" + errorThrown);
+  //     }
   // });
-
-
-  // JSONP Call
-  $.ajax({
-      url : InitGraphURL,
-      type: "POST",
-      data : adjacencyMatrixJSON,
-      dataType: "json",
-      //jsonpCallback: "logResults",
-      success: function(data, textStatus, jqXHR)
-      {
-          console.log("\nStatus: " + textStatus);
-      },
-      error: function (jqXHR, textStatus, errorThrown)
-      {
-          console.log("Status: " + textStatus + "\n" + errorThrown);
-      }
-  });
 
 }
 
@@ -119,17 +113,15 @@ function logResults(json)
   console.log(json);
 }
 
-// function AddDownloadButton(json)
-// {
-//   var downloadButton = L.easyButton('Center Map', function(btn, map){
-//     var dl = document.createElement('a');
-//     dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
-//     dl.setAttribute('download', 'adjacencyMatrix.json');
-//     dl.click();
-//   }).addTo(map);
-// }
-
-
+function AddDownloadButton(json)
+{
+  var downloadButton = L.easyButton('Download', function(btn, map){
+    var dl = document.createElement('a');
+    dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
+    dl.setAttribute('download', 'adjacencyMatrix.json');
+    dl.click();
+  }).addTo(map);
+}
 
 function CreateJsonDownloadLink(json)
 {
@@ -204,17 +196,17 @@ function InitAdjacencyMatrix()
   }
 
   // Set 1's for connected indeces
-  for(var i = 0; i < edges.length-1; i++)
+  for(var i = 0; i < edges.length-2; i++)
   {
+
     var indexA = edges[i].startNode.index;
     var indexB = edges[i].endNode.index;
     var latlngA = edges[i].startNode.latlng;
     var latlngB = edges[i].endNode.latlng;
     adjacencyMatrix[indexA][indexB] = 1 + EuclideanDistance(latlngA, latlngB);
   }
-
-
 }
+
 
 // Debug function to print out the adj matrix
 function PrintAdjacencyMatrix()
