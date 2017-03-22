@@ -85,24 +85,49 @@ function InitGraph()
 {
   var jsonOBJ = {"map": adjacencyMatrix};
   var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
-  AddDownloadButton(adjacencyMatrixJSON);
+  //AddDownloadButton(adjacencyMatrixJSON);
 
-  // Uncomment to test API Call locally
-  // $.post(InitGraphURL, function(data, status){
+  console.log("sending init graph request to " + InitGraphURL);
+
+  // Regular JSON Call
+  // $.post(InitGraphURL, adjacencyMatrixJSON, function(data, status){
   //   console.log("Data: " + data + "\nStatus: " + status);
   // });
 
+
+  // JSONP Call
+  $.ajax({
+      url : InitGraphURL,
+      type: "POST",
+      data : adjacencyMatrixJSON,
+      dataType: "json",
+      //jsonpCallback: "logResults",
+      success: function(data, textStatus, jqXHR)
+      {
+          console.log("\nStatus: " + textStatus);
+      },
+      error: function (jqXHR, textStatus, errorThrown)
+      {
+          console.log("Status: " + textStatus + "\n" + errorThrown);
+      }
+  });
+
 }
 
-function AddDownloadButton(json)
+function logResults(json)
 {
-  var downloadButton = L.easyButton('Center Map', function(btn, map){
-    var dl = document.createElement('a');
-    dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
-    dl.setAttribute('download', 'adjacencyMatrix.json');
-    dl.click();
-  }).addTo(map);
+  console.log(json);
 }
+
+// function AddDownloadButton(json)
+// {
+//   var downloadButton = L.easyButton('Center Map', function(btn, map){
+//     var dl = document.createElement('a');
+//     dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
+//     dl.setAttribute('download', 'adjacencyMatrix.json');
+//     dl.click();
+//   }).addTo(map);
+// }
 
 
 

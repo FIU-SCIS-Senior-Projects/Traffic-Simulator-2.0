@@ -1,9 +1,21 @@
 from flask import Flask, request, jsonify
 import routing
 import json
+import traceback
 
 app = Flask(__name__)
 router = routing.Routing()
+
+
+log_file = 'log_file.txt'
+def log_messages(messages):
+    with open(log_file, 'w') as lfile:
+        for m in messages:
+            lfile.write(m)
+            lfile.write('\n')
+
+        lfile.write('==========================================\n')
+
 
 @app.route('/initialize_graph', methods=['GET', 'POST'])
 def initialize_graph():
@@ -12,9 +24,17 @@ def initialize_graph():
 
     json_data = request.get_json(force=True)
 
-    router.set_graph(json_data['map'])
+    success = True
+    try:
+        router.set_graph(json_data['map'])
+    except Exception as e:
+        success = False
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
 
-    return "The graph was initialized."
+    router.set_graph(json_data['map'])
+    return "The graph was initialized: {}.".format(success)
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
 def init_graph_unity():
@@ -30,9 +50,17 @@ def init_graph_unity():
             adj_row.append(val)
         adj_mat.append(adj_row)
 
+    success = True
+    try:
+        router.set_graph(adj_mat)
+    except Exception as e:
+        success = False
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+
     router.set_graph(adj_mat)
-    success = router._graph is not None
-    return "The graph was initialized: {success}.".format(**locals())
+    return "The graph was initialized: {}.".format(success)
 
 @app.route('/get_path', methods=['GET', 'POST'])
 def get_path():
@@ -44,7 +72,15 @@ def get_path():
     algo = json_data['algorithm']
     source = json_data['source']
     target = json_data['target']
-    path = router.get_path(algo, source, target)
+
+    path = []
+    try:
+        path = router.get_path(algo, source, target)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+
     return jsonify(map=path)
 
 
