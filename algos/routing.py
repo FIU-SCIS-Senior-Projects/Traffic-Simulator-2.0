@@ -511,8 +511,6 @@ class Routing(object):
         return top_down_integral_scheme
 
     def set_graph(self, M: List[List[float]], algos=None) -> None:
-        """Generate the necessary objects that the algorithms will work on.
-        """
         self._graph = None
         if M is None:
             return
@@ -524,19 +522,22 @@ class Routing(object):
         self._graph = GraphDiam2h(in_out_mat)
         self._routing_schemes = {}
 
-        if algos:
-            if 0 in algos:
-                self._routing_schemes[0] = \
-                    self.get_dijkstra_scheme(self._graph)
-            if 1 in algos:
-                self._routing_schemes[1] = \
-                    self.get_top_down_integral_scheme(self._graph)
+        generate_schemes = {
+            0: self.get_dijkstra_scheme,
+            1: self.get_top_down_integral_scheme,
+        }
 
+        if algos:
+            # Generate only the schemes specified
+            no_repetition = set(algos)
+            for i in no_repetition:
+                if i in generate_schemes:
+                    func = generate_schemes[i]
+                    self._routing_schemes[i] = func(self._graph)
         else:
-            self._routing_schemes = {
-                0: self.get_dijkstra_scheme(self._graph),
-                1: self.get_top_down_integral_scheme(self._graph),
-            }
+            # Generate all schemes if non were specified
+            for i, func in generate_schemes.items():
+                self._routing_schemes[i] = func(self._graph)
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
