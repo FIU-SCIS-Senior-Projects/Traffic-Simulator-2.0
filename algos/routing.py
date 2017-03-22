@@ -472,10 +472,45 @@ class GraphUtils:
 
 
 class Routing(object):
-    def __init__(self, M: List[List[float]] = None) -> None:
-        self.set_graph(M)
+    def __init__(
+            self,
+            M: List[List[float]] = None,
+            algos: List[int] = None) -> None:
+        self.set_graph(M, algos=algos)
 
-    def set_graph(self, M: List[List[float]]) -> None:
+    def get_dijkstra_scheme(self, G):
+        num_vertices = len(G.nodes())
+        in_out_dijkstra_scheme = \
+            GraphUtils.dijkstra_routing_scheme(G)
+
+        # Filterting out all keys which contain nodes that have been generated
+        # in the in_out graph generation. Also removing all the new out nodes
+        # from the generated paths.
+        dijkstra_scheme = {
+            key: [int(v) for v in val if v < num_vertices]
+            for key, val in in_out_dijkstra_scheme.items()
+            if key[0] < num_vertices and key[1] < num_vertices
+        }
+
+        return dijkstra_scheme
+
+    def get_top_down_integral_scheme(self, G):
+        num_vertices = len(G.nodes())
+        in_out_top_down_integral_scheme = \
+            GraphUtils.top_down_integral_scheme_generation(self._graph)
+
+        # Filterting out all keys which contain nodes that have been generated
+        # in the in_out graph generation. Also removing all the new out nodes
+        # from the generated paths.
+        top_down_integral_scheme = {
+            key: [int(v) for v in val if v < num_vertices]
+            for key, val in in_out_top_down_integral_scheme.items()
+            if key[0] < num_vertices and key[1] < num_vertices
+        }
+
+        return top_down_integral_scheme
+
+    def set_graph(self, M: List[List[float]], algos=None) -> None:
         """Generate the necessary objects that the algorithms will work on.
         """
         self._graph = None
@@ -487,29 +522,21 @@ class Routing(object):
         num_vertices = original_mat.shape[0]
 
         self._graph = GraphDiam2h(in_out_mat)
-        self._in_out_dijkstra_scheme = \
-            GraphUtils.dijkstra_routing_scheme(self._graph)
-        self._in_out_top_down_integral_scheme = \
-            GraphUtils.top_down_integral_scheme_generation(self._graph)
+        self._routing_schemes = {}
 
-        # Filterting out all keys which contain nodes that have been generated
-        # in the in_out graph generation. Also removing all the new out nodes
-        # from the generated paths.
-        self._dijkstra_scheme = {
-            key: [int(v) for v in val if v < num_vertices]
-            for key, val in self._in_out_dijkstra_scheme.items()
-            if key[0] < num_vertices and key[1] < num_vertices
-        }
-        self._top_down_integral_scheme = {
-            key: [int(v) for v in val if v < num_vertices]
-            for key, val in self._in_out_top_down_integral_scheme.items()
-            if key[0] < num_vertices and key[1] < num_vertices
-        }
+        if algos:
+            if 0 in algos:
+                self._routing_schemes[0] = \
+                    self.get_dijkstra_scheme(self._graph)
+            if 1 in algos:
+                self._routing_schemes[1] = \
+                    self.get_top_down_integral_scheme(self._graph)
 
-        self._routing_schemes = {
-            0: self._dijkstra_scheme,
-            1: self._top_down_integral_scheme,
-        }
+        else:
+            self._routing_schemes = {
+                0: self.get_dijkstra_scheme(self._graph),
+                1: self.get_top_down_integral_scheme(self._graph),
+            }
 
     def get_path(self, algo, s, t: int) -> List[int]:
         """Get optimal path from s to t depending on the chosen algorithm.
