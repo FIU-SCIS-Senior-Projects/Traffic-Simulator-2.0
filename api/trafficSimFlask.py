@@ -26,15 +26,15 @@ def initialize_graph():
 
     success = True
     try:
-        router.set_graph(json_data['map'])
+        router.set_graph(json_data['map'], algos=json_data.get('algos', None))
     except Exception as e:
         success = False
         tb = traceback.format_exc()
         print(tb)
         log_messages([tb, json.dumps(json_data)])
 
-    router.set_graph(json_data['map'])
     return "The graph was initialized: {}.".format(success)
+
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
 def init_graph_unity():
@@ -52,15 +52,15 @@ def init_graph_unity():
 
     success = True
     try:
-        router.set_graph(adj_mat)
+        router.set_graph(adj_mat, algos=json_data.get('algos', None))
     except Exception as e:
         success = False
         tb = traceback.format_exc()
         print(tb)
         log_messages([tb, json.dumps(json_data)])
 
-    router.set_graph(adj_mat)
     return "The graph was initialized: {}.".format(success)
+
 
 @app.route('/get_path', methods=['GET', 'POST'])
 def get_path():

@@ -78,40 +78,42 @@ $.getJSON(geoDataFileName, function( data ) {
   DrawPolylines();
   InitAdjacencyMatrix();
   InitGraph();
-  PrintAdjacencyMatrix(); // for debugging
+  //PrintAdjacencyMatrix(); // for debugging
 });
 
 function InitGraph()
 {
-  var jsonOBJ = {"map": adjacencyMatrix};
+  var testMatrix = 
+  [[0.0, 1.0, 2.0, 0.0],
+  [5.0, 0.0, 0.0, 3.0],
+  [2.0, 0.0, 0.0, 4.0],
+  [0.0, 1.0, 1.0, 0.0]];
+
+  var jsonOBJ = {"map": testMatrix, "algos": [0]};
   var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
+
   AddDownloadButton(adjacencyMatrixJSON);
 
   console.log("sending init graph request to " + InitGraphURL);
 
-  // // API Call
-  // $.ajax({
-  //     url : InitGraphURL,
-  //     type: "POST",
-  //     data : adjacencyMatrixJSON,
-  //     dataType: "json",
-  //     //jsonpCallback: "logResults",
-  //     success: function(data, textStatus, jqXHR)
-  //     {
-  //         console.log("\nStatus: " + textStatus);
-  //     },
-  //     error: function (jqXHR, textStatus, errorThrown)
-  //     {
-  //         console.log("Status: " + textStatus + "\n" + errorThrown);
-  //     }
-  // });
+  // API Call
+  $.ajax({
+      url : InitGraphURL,
+      type: "POST",
+      data : adjacencyMatrixJSON,
+      dataType: "json",
+      success: function(data, textStatus, jqXHR)
+      {
+          console.log("\nStatus: " + textStatus);
+      },
+      error: function (jqXHR, textStatus, errorThrown)
+      {
+          console.log("Status: " + textStatus + "\n" + errorThrown);
+      }
+  });
 
 }
 
-function logResults(json)
-{
-  console.log(json);
-}
 
 function AddDownloadButton(json)
 {
