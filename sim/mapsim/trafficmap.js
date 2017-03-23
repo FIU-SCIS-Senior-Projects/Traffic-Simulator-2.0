@@ -1,8 +1,16 @@
-// TO DO:
-//    - Create points array from polyline start and end coords
-//    - Use points array to create an adjacency matrix of edge weights
 
-// Properties/Settings (in future could come from a file or db)
+
+// Data Properties
+var geoDataFileName = "fiu_roads.geojson";
+var InitGraphURL = "http://localhost:5000/initialize_graph";
+
+// Graph Structure
+var edges = [];
+var adjacencyMatrix = [];
+
+// Map Properties (these are defaults, real values will come from the data files)
+var map;
+var mapLayer;
 var centerLat = 25.7294483;
 var centerLon = -80.4076104;
 var boundsDeltaLon = 0.2;
@@ -10,76 +18,113 @@ var boundsDeltaLat = 0.1;
 var maxZ = 25;
 var minZ = 12;
 var startZ = 13;
-var geoDataFileName = "fiu_roads.geojson";
-var InitGraphURL = "http://localhost:5000/initialize_graph";
 
+// Starts the map
+InitData(geoDataFileName);
+InitDropZone();
 
-// Node Graph
-var edges = [];
-var adjacencyMatrix = [];
-
-// Set Map Properties
-var center = L.latLng(centerLat, centerLon);
-var northEastBound = L.latLng(centerLat - boundsDeltaLat, centerLon + boundsDeltaLon);
-var southWestBound = L.latLng(centerLat + boundsDeltaLat, centerLon - boundsDeltaLon);
-
-// Map Layer for MapQuest Plugin
-var mapLayer = MQ.mapLayer()
-
-// Init Map
-var map = L.map('map', {
-	layers: mapLayer,
-  maxZoom: maxZ,
-  minZoom: minZ,
-  maxBounds: [southWestBound, northEastBound], 
-}).setView(center, startZ);
-
-// Add Traffic data from Map Quest Plugin
-L.control.layers({
-  'Map': mapLayer,
-  'Satellite': MQ.satelliteLayer(),
-  'Hybrid': MQ.hybridLayer(),
-  'Dark': MQ.darkLayer(),
-  'Light': MQ.lightLayer()
-}, {
-  'Traffic Flow': MQ.trafficLayer({layers: ['flow']}),
-  'Traffic Incidents': MQ.trafficLayer({layers: ['incidents']})
-}).addTo(map);
-
-//Get json object for major highways
-$.getJSON(geoDataFileName, function( data ) {
-  var count = 0;
-  // iterate through geojson features 
-  $.each(data.features, function (key, val) {
-    var coords = [];
-    // iterate through coordinates of the line feature
-    $.each(val.geometry.coordinates, function(i,j){
-        var point = [j[1], j[0]];
-        coords.push(point);
-    });
-    reverseCoords = ArrayReverse(coords);
-    // make a node object based on the lines first coordinate 
-    // and the associates set of coordinates that make up its edge
-    var nodeA = {index: count, latlng: coords[0], edge: coords, type: "A"};
-    var nodeB = {index: ++count, latlng: reverseCoords[0], edge: reverseCoords, type: "B"};
-
-    var edgeA = {startNode: nodeA, endNode: nodeB, points: coords};
-    var edgeB = {startNode: nodeB, endNode: nodeA, points: reverseCoords};
-
-    edges.push(edgeA);
-    edges.push(edgeB);
-    // count++;
-    //console.log(edgeA);
-    //console.log(edgeB);
-     
+// Initialize the File Drop Zone
+function InitDropZone()
+{
+  var dropZone = document.getElementById('dropZone');
+  // 1
+  window.addEventListener('dragenter', function(e) {
+      ShowDropZone();
   });
-  // Just using this for visualization right now to help understand
-  DrawNodes();
-  DrawPolylines();
-  InitAdjacencyMatrix();
-  InitGraph();
-  //PrintAdjacencyMatrix(); // for debugging
-});
+
+  // 2
+  dropZone.addEventListener('dragenter', AllowDrag);
+  dropZone.addEventListener('dragover', AllowDrag);
+
+  // 3
+  dropZone.addEventListener('dragleave', function(e) {
+      HideDropZone();
+  });
+
+  // 4
+  dropZone.addEventListener('drop', HandleDrop);
+}
+
+
+
+// Initializes the geo json data, builds the node graph, and draws the map
+function InitData(file)
+{
+  // Read data and initialize graph structures
+  $.getJSON(file, function( data ) {
+    var count = 0;
+    // iterate through geojson features 
+    $.each(data.features, function (key, val) {
+      var coords = [];
+      // iterate through coordinates of the line feature
+      $.each(val.geometry.coordinates, function(i,j){
+          var point = [j[1], j[0]];
+          coords.push(point);
+      });
+      reverseCoords = ArrayReverse(coords);
+      // make a node object based on the lines first coordinate 
+      // and the associates set of coordinates that make up its edge
+      var nodeA = {index: count, latlng: coords[0], edge: coords, type: "A"};
+      var nodeB = {index: ++count, latlng: reverseCoords[0], edge: reverseCoords, type: "B"};
+
+      var edgeA = {startNode: nodeA, endNode: nodeB, points: coords};
+      var edgeB = {startNode: nodeB, endNode: nodeA, points: reverseCoords};
+
+      edges.push(edgeA);
+      edges.push(edgeB);
+      // count++;
+      //console.log(edgeA);
+      //console.log(edgeB);
+       
+    });
+    InitMap();
+    DrawNodes();
+    DrawPolylines();
+    InitAdjacencyMatrix();
+    InitGraph();
+    //PrintAdjacencyMatrix(); // for debugging
+  });
+}
+
+
+
+function InitMap()
+{
+  if(edges[0] != null && edges.length > 0)
+  {
+    centerLat = edges[0].points[0][0];
+    centerLon = edges[0].points[0][1];
+  }
+
+  // Set Map Properties
+  var center = L.latLng(centerLat, centerLon);
+  var northEastBound = L.latLng(centerLat - boundsDeltaLat, centerLon + boundsDeltaLon);
+  var southWestBound = L.latLng(centerLat + boundsDeltaLat, centerLon - boundsDeltaLon);
+
+  // Map Layer for MapQuest Plugin
+  mapLayer = MQ.mapLayer()
+
+  // Init Map
+  map = L.map('map', {
+    layers: mapLayer,
+    maxZoom: maxZ,
+    minZoom: minZ,
+    maxBounds: [southWestBound, northEastBound], 
+  }).setView(center, startZ);
+
+  // Add Traffic data from Map Quest Plugin
+  L.control.layers({
+    'Map': mapLayer,
+    'Satellite': MQ.satelliteLayer(),
+    'Hybrid': MQ.hybridLayer(),
+    'Dark': MQ.darkLayer(),
+    'Light': MQ.lightLayer()
+  }, {
+    'Traffic Flow': MQ.trafficLayer({layers: ['flow']}),
+    'Traffic Incidents': MQ.trafficLayer({layers: ['incidents']})
+  }).addTo(map);
+}
+
 
 function InitGraph()
 {
@@ -94,27 +139,29 @@ function InitGraph()
 
   AddDownloadButton(adjacencyMatrixJSON);
 
-  console.log("sending init graph request to " + InitGraphURL);
 
-  // API Call
-  $.ajax({
-      url : InitGraphURL,
-      type: "POST",
-      data : adjacencyMatrixJSON,
-      dataType: "json",
-      success: function(data, textStatus, jqXHR)
-      {
-          console.log("\nStatus: " + textStatus);
-      },
-      error: function (jqXHR, textStatus, errorThrown)
-      {
-          console.log("Status: " + textStatus + "\n" + errorThrown);
-      }
-  });
+
+  //console.log("sending init graph request to " + InitGraphURL);
+
+  // // API Call CURENTLY NOT WORKING
+  // $.ajax({
+  //     url : InitGraphURL,
+  //     type: "POST",
+  //     data : adjacencyMatrixJSON,
+  //     dataType: "json",
+  //     success: function(data, textStatus, jqXHR)
+  //     {
+  //         console.log("\nStatus: " + textStatus);
+  //     },
+  //     error: function (jqXHR, textStatus, errorThrown)
+  //     {
+  //         console.log("Status: " + textStatus + "\n" + errorThrown);
+  //     }
+  // });
 
 }
 
-
+// Adds the button to download the adjacency matrix as a json file
 function AddDownloadButton(json)
 {
   var downloadButton = L.easyButton('Download', function(btn, map){
@@ -123,33 +170,6 @@ function AddDownloadButton(json)
     dl.setAttribute('download', 'adjacencyMatrix.json');
     dl.click();
   }).addTo(map);
-}
-
-function CreateJsonDownloadLink(json)
-{
-  var ourCustomControl = L.Control.extend({
-
-    options: {
-      position: 'topleft' 
-      //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
-    },
-
-    onAdd: function (map) {
-        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom leaflet-control-button');
-
-        container.style.backgroundColor = 'white';
-        container.style.width = '30px';
-        container.style.height = '30px';
-
-        var dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(json);
-        container.setAttribute("href", "data:"+dataUri);
-        container.setAttribute("download", "data.json"); 
-        return container;
-      },
-
-  });
-
-  map.addControl(new ourCustomControl());
 }
 
 // Function to draw the nodes on the map
