@@ -169,7 +169,7 @@ public class SimulationController : MonoBehaviour
             string inputJson = AdjMatrixToJSON();
 
             PostDataCallback callback = StartGetPaths;
-            Debug.Log(inputJson);
+            UnityEngine.Debug.Log("Sending Post request to init graph in API...\n" + "input json: \n" + inputJson);
             API.PostData(inputJson, url, callback);
 
             yield return new WaitForSeconds(SetGraphInterval);
@@ -235,6 +235,7 @@ public class SimulationController : MonoBehaviour
         string inputJson = "{\"algorithm\":" + algo.ToString() + ",\"source\":" + startIndex.ToString() + ",\"target\":" + endIndex.ToString() + "}";
 
         PostDataCallback callback = OnGetPathComplete;
+        UnityEngine.Debug.Log("Sending Post request to Get Path from API...");
         API.PostData(inputJson, url, callback, JsonPaths);
     }
 

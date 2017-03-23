@@ -2,10 +2,22 @@ from flask import Flask, request, jsonify, abort
 from flask_limiter import Limiter
 import routing
 import json
+import traceback
 
 app = Flask(__name__)
 limiter = Limiter(app)
 router = routing.Routing()
+
+
+log_file = 'log_file.txt'
+def log_messages(messages):
+    with open(log_file, 'w') as lfile:
+        for m in messages:
+            lfile.write(m)
+            lfile.write('\n')
+
+        lfile.write('==========================================\n')
+
 
 def __get_request_key():
     return request.headers['api_key']
@@ -26,9 +38,17 @@ def initialize_graph():
 
     json_data = request.get_json(force=True)
 
-    router.set_graph(json_data['map'])
+    success = True
+    try:
+        router.set_graph(json_data['map'], algos=json_data.get('algos', None))
+    except Exception as e:
+        success = False
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
 
-    return "The graph was initialized."
+    return "The graph was initialized: {}.".format(success)
+
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
 @limiter.limit(__get_request_key)
@@ -52,9 +72,17 @@ def init_graph_unity():
             adj_row.append(val)
         adj_mat.append(adj_row)
 
-    router.set_graph(adj_mat)
-    success = router._graph is not None
-    return "The graph was initialized: {success}.".format(**locals())
+    success = True
+    try:
+        router.set_graph(adj_mat, algos=json_data.get('algos', None))
+    except Exception as e:
+        success = False
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+
+    return "The graph was initialized: {}.".format(success)
+
 
 @app.route('/get_path', methods=['GET', 'POST'])
 def get_path():
@@ -66,7 +94,15 @@ def get_path():
     algo = json_data['algorithm']
     source = json_data['source']
     target = json_data['target']
-    path = router.get_path(algo, source, target)
+
+    path = []
+    try:
+        path = router.get_path(algo, source, target)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+
     return jsonify(map=path)
 
 def __isAuthorized(api_id, api_key):
