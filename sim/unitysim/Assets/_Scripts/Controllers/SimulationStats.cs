@@ -120,12 +120,11 @@ public class SimulationStats : MonoBehaviour
             int index0 = Map.NodeList.IndexOf(n0);
             int index1 = Map.NodeList.IndexOf(n1);
 
-            Debug.Log(Vector3.Distance(n0.transform.position, n1.transform.position));
 
             Map.AdjMatrix[index0, index1] = (float)EdgeCounts[key] + Vector3.Distance(n0.transform.position, n1.transform.position);
             Map.AdjMatrix[index1, index0] = (float)EdgeCounts[key] + Vector3.Distance(n0.transform.position, n1.transform.position);
         }
-        Debug.Log("Updated Matrix");
+        //Debug.Log("Updated Matrix");
         Map.PrintMatrixFormatted();
     }
 }
