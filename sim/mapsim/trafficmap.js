@@ -53,7 +53,7 @@ function InitData(file)
   // Read data and initialize graph structures
   $.getJSON(file, function( data ) {
     var count = 0;
-    // iterate through geojson features 
+    // iterate through geojson features
     $.each(data.features, function (key, val) {
       var coords = [];
       // iterate through coordinates of the line feature
@@ -62,7 +62,7 @@ function InitData(file)
           coords.push(point);
       });
       reverseCoords = ArrayReverse(coords);
-      // make a node object based on the lines first coordinate 
+      // make a node object based on the lines first coordinate
       // and the associates set of coordinates that make up its edge
       var nodeA = {index: count, latlng: coords[0], edge: coords, type: "A"};
       var nodeB = {index: ++count, latlng: reverseCoords[0], edge: reverseCoords, type: "B"};
@@ -75,7 +75,7 @@ function InitData(file)
       // count++;
       //console.log(edgeA);
       //console.log(edgeB);
-       
+
     });
     InitMap();
     DrawNodes();
@@ -109,7 +109,7 @@ function InitMap()
     layers: mapLayer,
     maxZoom: maxZ,
     minZoom: minZ,
-    maxBounds: [southWestBound, northEastBound], 
+    maxBounds: [southWestBound, northEastBound],
   }).setView(center, startZ);
 
   // Add Traffic data from Map Quest Plugin
@@ -128,7 +128,7 @@ function InitMap()
 
 function InitGraph()
 {
-  var testMatrix = 
+  var testMatrix =
   [[0.0, 1.0, 2.0, 0.0],
   [5.0, 0.0, 0.0, 3.0],
   [2.0, 0.0, 0.0, 4.0],
@@ -143,21 +143,22 @@ function InitGraph()
 
   //console.log("sending init graph request to " + InitGraphURL);
 
-  // // API Call CURENTLY NOT WORKING
-  // $.ajax({
-  //     url : InitGraphURL,
-  //     type: "POST",
-  //     data : adjacencyMatrixJSON,
-  //     dataType: "json",
-  //     success: function(data, textStatus, jqXHR)
-  //     {
-  //         console.log("\nStatus: " + textStatus);
-  //     },
-  //     error: function (jqXHR, textStatus, errorThrown)
-  //     {
-  //         console.log("Status: " + textStatus + "\n" + errorThrown);
-  //     }
-  // });
+  // API Call CURENTLY NOT WORKING
+  $.ajax({
+      url : InitGraphURL,
+      type: "POST",
+      data : adjacencyMatrixJSON,
+      dataType: "json",
+      headers: {"api_id":"testuser1", "api_key":"a798e3d9-3222-4ce6-908f-a08102ece1a3"},
+      success: function(data, textStatus, jqXHR)
+      {
+          console.log("\nStatus: " + jqXHR.status);
+      },
+      error: function (jqXHR, textStatus, errorThrown)
+      {
+          console.log("Status: " + jqXHR.status + "\n" + errorThrown);
+      }
+  });
 
 }
 
@@ -198,7 +199,7 @@ function DrawPolylines()
         opacity: 0.5,
         smoothFactor: 1
     });
-    polyline.addTo(map);      
+    polyline.addTo(map);
   }
 }
 
@@ -212,7 +213,7 @@ function InitAdjacencyMatrix()
     var row = [];
     for(var j = 0; j < edges.length/2; j++)
     {
-      row.push(0);  
+      row.push(0);
     }
     adjacencyMatrix.push(row);
   }
@@ -270,14 +271,3 @@ function ArrayReverse(arr)
 // var line = L.polyline(coords),
 // animatedMarker = L.animatedMarker(line.getLatLngs());
 // map.addLayer(animatedMarker);
-
-
-
-
-
-
-
-
-
-
-

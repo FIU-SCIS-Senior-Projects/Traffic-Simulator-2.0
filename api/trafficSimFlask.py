@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, make_response
 from flask_limiter import Limiter
 import routing
 import json
@@ -20,12 +20,16 @@ def log_messages(messages):
 
 
 def __get_request_key():
-    return request.headers['api_key']
+    try:
+        return request.headers['api_key']
+    except Exception as e:
+        abort(make_response("Bad Key Guy!", 401, {"Access-Control-Allow-Origin": "*"}))
 
 @app.route('/initialize_graph', methods=['GET', 'POST'])
 @limiter.limit(__get_request_key)
 @limiter.limit("1 per minute")
 def initialize_graph():
+    abort(401)
     api_identity = request.headers['api_id']
     api_key = request.headers['api_key']
 
@@ -46,8 +50,9 @@ def initialize_graph():
         tb = traceback.format_exc()
         print(tb)
         log_messages([tb, json.dumps(json_data)])
+        return ("Error happened", 500, {})
 
-    return "The graph was initialized: {}.".format(success)
+    return ({}, 200, { "Access-Control-Allow-Origin": "*"})
 
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
