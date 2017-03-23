@@ -1,0 +1,13 @@
+{
+  "api_users":
+  [
+    {
+      "api_id":"testuser1",
+      "api_key":"a798e3d9-3222-4ce6-908f-a08102ece1a3"
+    },
+    {
+      "api_id":"testuser2",
+      "api_key":"45aca5de-1a0e-4a70-ad7e-ed6d50cac8d1"
+    }
+  ]
+}
