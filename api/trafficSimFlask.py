@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify, abort, make_response
 from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_cors import CORS, cross_origin
 import routing
 import json
 import traceback
 
 app = Flask(__name__)
-limiter = Limiter(app)
+CORS(app)
+limiter = Limiter(app, key_func = get_remote_address)
 router = routing.Routing()
 
 
@@ -20,29 +23,33 @@ def log_messages(messages):
 
 
 def __get_request_key():
+    if __check_preflight() is True:
+        return get_remote_address()
+
     try:
         return request.headers['api_key']
     except Exception as e:
-        abort(make_response("Bad Key Guy!", 401, {"Access-Control-Allow-Origin": "*"}))
+        abort(__response("api_key header not found. Please provide this header to access api.", 400))
 
-@app.route('/initialize_graph', methods=['GET', 'POST'])
+@app.route('/initialize_graph', methods=['POST'])
 @limiter.limit(__get_request_key)
-@limiter.limit("1 per minute")
+@limiter.limit("1000000000000000 per second")
 def initialize_graph():
-    abort(401)
-    api_identity = request.headers['api_id']
-    api_key = request.headers['api_key']
+    # if __check_preflight() is True:
+    #     return __response("Preflight request. Not processed.", 200)
 
+    try:
+        api_identity = request.headers['api_id']
+        api_key = request.headers['api_key']
+    except Exception as e:
+        return __response("api_id header and/or api_key header not found. Please provide these headers to access this endpoint.", 401)
 
     if(__isAuthorized(api_identity, api_key) is False):
-        abort(401)
-
-    if request.method == 'GET':
-        return """This is a POST endpoint that takes in JSON of the format: {"map":[[<float>]]} representing a 2d array of floating point numbers which represent the adjacency matrix of weights between street nodes."""
+        return __response("api_id and/or api_key were found to be invalid. Access has been denied.", 401)
 
     json_data = request.get_json(force=True)
-
     success = True
+
     try:
         router.set_graph(json_data['map'], algos=json_data.get('algos', None))
     except Exception as e:
@@ -50,9 +57,9 @@ def initialize_graph():
         tb = traceback.format_exc()
         print(tb)
         log_messages([tb, json.dumps(json_data)])
-        return ("Error happened", 500, {})
+        return __response("Error occurred while initializing the graph.", 500)
 
-    return ({}, 200, { "Access-Control-Allow-Origin": "*"})
+    return jsonify(success=str(success))
 
 
 @app.route('/init_graph_unity', methods=['GET', 'POST'])
@@ -121,6 +128,15 @@ def __isAuthorized(api_id, api_key):
             is_valid = True
     return is_valid
 
+def __response(body, status_code):
+    return make_response(body, status_code, {"Access-Control-Allow-Origin": "*"})
+
+def __check_preflight():
+    try:
+        if request.headers['Access-Control-Request-Headers'] is not None:
+            return True
+    except Exception as e:
+        return False
 
 
 if __name__ == '__main__':
