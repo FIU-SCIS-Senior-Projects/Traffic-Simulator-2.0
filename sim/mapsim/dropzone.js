@@ -14,7 +14,8 @@ function AllowDrag(e)
     e.preventDefault();
 }
 
-function HandleDrop(e) {
+// FORMAT THIS CORRECTLY!!! 
+function HandleDrop(e, callback) {
     e.preventDefault();
     HideDropZone();
 
@@ -23,18 +24,34 @@ function HandleDrop(e) {
     if (dt.items) {
         // Use DataTransferItemList interface to access the file(s)
         for (var i=0; i < dt.items.length; i++) {
+
           if (dt.items[i].kind == "file") {
             var f = dt.items[i].getAsFile();
-            console.log("... file[" + i + "].name = " + f.name);
-          }
+            //console.log("... file[" + i + "].name = " + f.name);
+            
+              // validate file type and size
+
+              var reader = new FileReader();
+                reader.onloadend = function(e) {
+                var data = JSON.parse(this.result);
+                callback(data);
+              };
+              
+              reader.readAsText(f);
+
+              
+
+          
+        }
         }
     } else {
         // Use DataTransfer interface to access the file(s)
         for (var i=0; i < dt.files.length; i++) {
-          console.log("... file[" + i + "].name = " + dt.files[i].name);
+          //console.log("... file[" + i + "].name = " + dt.files[i].name);
         }  
     }
     
     // Clear the drag data cache (for all formats/types)
     e.dataTransfer.clearData();
 }
+

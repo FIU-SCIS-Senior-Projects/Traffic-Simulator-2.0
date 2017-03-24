@@ -1,7 +1,9 @@
-
+// TO DO: 
+//  1. Figure out how to clear all poly lines and circles from map before updating data
+//  1. Re-init map on file drop
 
 // Data Properties
-var geoDataFileName = "fiu_roads.geojson";
+var defaultGeoDataFileName = "fiu_roads.geojson";
 var InitGraphURL = "http://localhost:5000/initialize_graph";
 
 // Graph Structure
@@ -21,7 +23,7 @@ var minZ = 12;
 var startZ = 13;
 
 // Starts the map
-InitData(geoDataFileName);
+InitData(defaultGeoDataFileName);
 InitDropZone();
 
 // Initialize the File Drop Zone
@@ -43,16 +45,23 @@ function InitDropZone()
   });
 
   // 4
-  dropZone.addEventListener('drop', HandleDrop);
+  dropZone.addEventListener('drop', function(e){HandleDrop(e, UpdateData)});
 }
 
-
+// TO DO
+function UpdateData(data)
+{
+}
 
 // Initializes the geo json data, builds the node graph, and draws the map
 function InitData(file)
 {
+  nodes = []
+  edges = [];
+  adjacencyMatrix = [];
   // Read data and initialize graph structures
   $.getJSON(file, function( data ) {
+
     var count = 0;
     // iterate through geojson features
     $.each(data.features, function (key, val) {
@@ -83,6 +92,7 @@ function InitData(file)
         count++;
         nodes.push(startNode);
       }
+      
       if(endNode == null)
       {
         endNode = {index: count, latlng: coords[coords.length-1]};
@@ -153,7 +163,7 @@ function InitGraph()
   [2.0, 0.0, 0.0, 4.0],
   [0.0, 1.0, 1.0, 0.0]];
 
-  var jsonOBJ = {"map": testMatrix, "algos": [0]};
+  var jsonOBJ = {"map": adjacencyMatrix, "algos": [0]};
   var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
 
   AddDownloadButton(adjacencyMatrixJSON);
@@ -199,9 +209,9 @@ function DrawNodes()
   {
     // Draw a circle where the node is
     var circle = L.circle(edges[i].startNode.latlng, {
-      color: 'red',
+      color: 'blue',
       fillColor: '#f03',
-      fillOpacity: 0.1,
+      fillOpacity: 0.25,
       radius: 5
     }).addTo(map);
   }
@@ -215,7 +225,7 @@ function DrawPolylines()
     color = GetWeightedEdgeColor(edges[i]);
     var polyline = new L.Polyline(edges[i].linePoints, {
         color: color,
-        weight: 2,
+        weight: 3,
         opacity: 0.5,
         smoothFactor: 1
     });
@@ -249,11 +259,11 @@ function GetWeightedEdgeColor(edge)
 function InitAdjacencyMatrix()
 {
   // Fill matrix with 0's first
-  for(var i = 0; i < edges.length; i++)
+  for(var i = 0; i < nodes.length; i++)
   {
     // the adjacency matrix row
     var row = [];
-    for(var j = 0; j < edges.length; j++)
+    for(var j = 0; j < nodes.length; j++)
     {
       row.push(0);
     }
@@ -266,6 +276,7 @@ function InitAdjacencyMatrix()
 
     var indexA = edges[i].startNode.index;
     var indexB = edges[i].endNode.index;
+
     var latlngA = edges[i].startNode.latlng;
     var latlngB = edges[i].endNode.latlng;
     adjacencyMatrix[indexA][indexB] = 1 + EuclideanDistance(latlngA, latlngB);
