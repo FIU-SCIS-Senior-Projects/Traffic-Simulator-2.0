@@ -5,6 +5,7 @@ var geoDataFileName = "fiu_roads.geojson";
 var InitGraphURL = "http://localhost:5000/initialize_graph";
 
 // Graph Structure
+var nodes = []
 var edges = [];
 var adjacencyMatrix = [];
 
@@ -61,39 +62,57 @@ function InitData(file)
           var point = [j[1], j[0]];
           coords.push(point);
       });
-      reverseCoords = ArrayReverse(coords);
-      // make a node object based on the lines first coordinate
-      // and the associates set of coordinates that make up its edge
-      var nodeA = {index: count, latlng: coords[0], edge: coords, type: "A"};
-      var nodeB = {index: ++count, latlng: reverseCoords[0], edge: reverseCoords, type: "B"};
 
-      var edgeA = {startNode: nodeA, endNode: nodeB, points: coords};
-      var edgeB = {startNode: nodeB, endNode: nodeA, points: reverseCoords};
+      var startNode;
+      var endNode;
+      for(var i = 0; i < nodes.length; i++)
+      {
+        if(ArraysEqual(nodes[i].latlng, coords[0]))
+        {
+          startNode = nodes[i];
+        }
+        if(ArraysEqual(nodes[i].latlng, coords[coords.length-1]))
+        {
+          endNode = nodes[i];
+        }
+      }
 
-      edges.push(edgeA);
-      edges.push(edgeB);
-      // count++;
-      //console.log(edgeA);
-      //console.log(edgeB);
+      if(startNode == null)
+      {
+        startNode = {index: count, latlng: coords[0]};
+        count++;
+        nodes.push(startNode);
+      }
+      if(endNode == null)
+      {
+        endNode = {index: count, latlng: coords[coords.length-1]};
+        count++;
+        nodes.push(endNode);
+      }
+
+      edge = {startNode: startNode, endNode: endNode, linePoints: coords};
+      reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords)};
+      edges.push(edge);
+      edges.push(reverseEdge);
 
     });
+    //console.log(edges);
     InitMap();
-    DrawNodes();
-    DrawPolylines();
     InitAdjacencyMatrix();
     InitGraph();
+    DrawNodes();
+    DrawPolylines();
     //PrintAdjacencyMatrix(); // for debugging
   });
 }
-
 
 
 function InitMap()
 {
   if(edges[0] != null && edges.length > 0)
   {
-    centerLat = edges[0].points[0][0];
-    centerLon = edges[0].points[0][1];
+    centerLat = edges[0].linePoints[0][0];
+    centerLon = edges[0].linePoints[0][1];
   }
 
   // Set Map Properties
@@ -143,22 +162,22 @@ function InitGraph()
 
   //console.log("sending init graph request to " + InitGraphURL);
 
-  // API Call CURENTLY NOT WORKING
-  $.ajax({
-      url : InitGraphURL,
-      type: "POST",
-      data : adjacencyMatrixJSON,
-      dataType: "json",
-      headers: {"api_id":"testuser1", "api_key":"a798e3d9-3222-4ce6-908f-a08102ece1a3"},
-      success: function(data, textStatus, jqXHR)
-      {
-          console.log("\nStatus: " + jqXHR.status);
-      },
-      error: function (jqXHR, textStatus, errorThrown)
-      {
-          console.log("Status: " + jqXHR.status + "\n" + errorThrown);
-      }
-  });
+  // // API Call CURENTLY NOT WORKING
+  // $.ajax({
+  //     url : InitGraphURL,
+  //     type: "POST",
+  //     data : adjacencyMatrixJSON,
+  //     dataType: "json",
+  //     headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
+  //     success: function(data, textStatus, jqXHR)
+  //     {
+  //         console.log("\nStatus: " + jqXHR.status);
+  //     },
+  //     error: function (jqXHR, textStatus, errorThrown)
+  //     {
+  //         console.log("Status: " + jqXHR.status + "\n" + errorThrown);
+  //     }
+  // });
 
 }
 
@@ -193,8 +212,9 @@ function DrawPolylines()
 {
   for(var i = 0; i < edges.length; i++)
   {
-    var polyline = new L.Polyline(edges[i].points, {
-        color: 'blue',
+    color = GetWeightedEdgeColor(edges[i]);
+    var polyline = new L.Polyline(edges[i].linePoints, {
+        color: color,
         weight: 2,
         opacity: 0.5,
         smoothFactor: 1
@@ -203,15 +223,37 @@ function DrawPolylines()
   }
 }
 
+function GetWeightedEdgeColor(edge)
+{
+  var startIndex = edge.startNode.index;
+  var endIndex = edge.endNode.index;
+  var weight = adjacencyMatrix[startIndex][endIndex] - 1;
+  //console.log(weight);
+  if(weight > 0.1)
+    return "#FF5733"
+
+  if(weight > 0.9)
+    return "#FFF633"
+
+  if(weight > 0.08)
+    return "#D1FF33"
+
+  if(weight > 0.07)
+    return "#9BFF33"
+
+  return "#33FF43"
+
+}
+
 // Fills matrix with 0's first, then sets a 1 if there is a connection between two indeces
 function InitAdjacencyMatrix()
 {
   // Fill matrix with 0's first
-  for(var i = 0; i < edges.length/2; i++)
+  for(var i = 0; i < edges.length; i++)
   {
     // the adjacency matrix row
     var row = [];
-    for(var j = 0; j < edges.length/2; j++)
+    for(var j = 0; j < edges.length; j++)
     {
       row.push(0);
     }
@@ -219,7 +261,7 @@ function InitAdjacencyMatrix()
   }
 
   // Set 1's for connected indeces
-  for(var i = 0; i < edges.length-2; i++)
+  for(var i = 0; i < edges.length; i++)
   {
 
     var indexA = edges[i].startNode.index;
@@ -227,7 +269,12 @@ function InitAdjacencyMatrix()
     var latlngA = edges[i].startNode.latlng;
     var latlngB = edges[i].endNode.latlng;
     adjacencyMatrix[indexA][indexB] = 1 + EuclideanDistance(latlngA, latlngB);
+    adjacencyMatrix[indexA][indexB] += RandomInRange(0.05, 0.1);
   }
+}
+
+function RandomInRange(min, max) {
+  return Math.random() < 0.5 ? ((1-Math.random()) * (max-min) + min) : (Math.random() * (max-min) + min);
 }
 
 
@@ -264,6 +311,11 @@ function ArrayReverse(arr)
     reverseArr.push(arr[i]);
   }
   return reverseArr;
+}
+
+function GenerateAnimatedMarker(path)
+{
+
 }
 
 
