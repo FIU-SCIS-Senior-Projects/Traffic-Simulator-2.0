@@ -5,6 +5,8 @@
 // Data Properties
 var defaultGeoDataFileName = "fiu_roads.geojson";
 var InitGraphURL = "http://localhost:5000/initialize_graph";
+var GetPathURL = "http://localhost:5000/get_path";
+var InitGraphStatus;
 
 // Graph Structure
 var nodes = []
@@ -62,69 +64,19 @@ function InitData(file)
 	// Read data and initialize graph structures
 	$.getJSON(file, function( data ) 
 	{
-		var count = 0;
-
-		// iterate through geojson features
-		$.each(data.features, function (key, val) 
-		{
-			var coords = [];
-
-			// iterate through coordinates of the line feature
-			$.each(val.geometry.coordinates, function(i,j)
-			{
-				var point = [j[1], j[0]];
-				coords.push(point);
-			});
-
-			var startNode;
-			var endNode;
-
-			for(var i = 0; i < nodes.length; i++)
-			{
-				if(ArraysEqual(nodes[i].latlng, coords[0]))
-				{
-					startNode = nodes[i];
-				}
-				if(ArraysEqual(nodes[i].latlng, coords[coords.length-1]))
-				{
-				  endNode = nodes[i];
-				}
-			}
-
-			if(startNode == null)
-			{
-				startNode = {index: count, latlng: coords[0]};
-				count++;
-				nodes.push(startNode);
-			}
-
-			if(endNode == null)
-			{
-				endNode = {index: count, latlng: coords[coords.length-1]};
-				count++;
-				nodes.push(endNode);
-			}
-
-			edge = {startNode: startNode, endNode: endNode, linePoints: coords};
-			reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords)};
-			edges.push(edge);
-			edges.push(reverseEdge);
-		});
-
-		InitMap();
-		InitAdjacencyMatrix();
-		InitGraph();
-		DrawNodes();
-		DrawPolylines();
-		PrintAdjacencyMatrix();
-		console.log(TestAdjacencyMatrixForEmptyRows());
-
+		UpdateData(data);
 	});
 }
 
 // Updates the data when a new geojson file is dragged and dropped onto the map
 function UpdateData(data)
 {
+	if(this.map != null)
+	{
+		// Need to do this since we are going to re-initialize the map now
+		this.map.remove();
+	}
+
 	nodes = []
 	edges = [];
 	adjacencyMatrix = [];
@@ -177,17 +129,14 @@ function UpdateData(data)
 		edges.push(edge);
 		edges.push(reverseEdge);
 	});
-	// Need to do this since we are going to re-initialize the map now
-	this.map.remove();
 
 	InitMap();
 	InitAdjacencyMatrix();
-	InitGraph();
+	InitGraphData();
 	DrawNodes();
 	DrawPolylines();
 	PrintAdjacencyMatrix();
-
-	console.log(TestAdjacencyMatrixForEmptyRows());
+	TestAdjacencyMatrixForEmptyRows();
 }
 
 // Initializes the leaflet map
@@ -233,7 +182,7 @@ function InitMap()
 
 
 // Initializes the graph structure and makes an API call to init the graph in the server side
-function InitGraph()
+function InitGraphData()
 {
 	var testMatrix =
 	[[0.0, 1.0, 2.0, 0.0],
@@ -245,36 +194,135 @@ function InitGraph()
 	var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
 
 	AddDownloadButton(adjacencyMatrixJSON);
+	AddInitGraphButton(adjacencyMatrixJSON);
 
-	// // API Call CURENTLY NOT WORKING
-	// $.ajax({
-	//     url : InitGraphURL,
-	//     type: "POST",
-	//     data : adjacencyMatrixJSON,
-	//     dataType: "json",
-	//     headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
-	//     success: function(data, textStatus, jqXHR)
-	//     {
-	//         console.log("\nStatus: " + jqXHR.status);
-	//     },
-	//     error: function (jqXHR, textStatus, errorThrown)
-	//     {
-	//         console.log("Status: " + jqXHR.status + "\n" + errorThrown);
-	//     }
-	// });
 
+}
+
+function InitGraph(jsonData)
+{
+	InitGraphStatus = 0;
+	// API Call CURENTLY NOT WORKING
+	$.ajax({
+	    url : InitGraphURL,
+	    type: "POST",
+	    data : jsonData,
+	    dataType: "json",
+	    headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
+	    success: function(data, textStatus, jqXHR)
+	    {
+	    	InitGraphStatus = jqXHR.status;
+	        console.log("\nStatus: " + jqXHR.status);
+	    },
+	    error: function (jqXHR, textStatus, errorThrown)
+	    {
+	    	InitGraphStatus = jqXHR.status;
+	        console.log("Status: " + jqXHR.status + "\n" + errorThrown);
+	    }
+	});
+}
+
+
+
+function GetPath(jsonData)
+{
+	// API Call CURENTLY NOT WORKING
+	$.ajax({
+	    url : GetPathURL,
+	    type: "POST",
+	    data : jsonData,
+	    dataType: "json",
+	    headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
+	    success: function(data, textStatus, jqXHR)
+	    {
+	    	InitGraphStatus = jqXHR.status;
+	        console.log("\nStatus: " + jqXHR.status);
+	    },
+	    error: function (jqXHR, textStatus, errorThrown)
+	    {
+	    	InitGraphStatus = jqXHR.status;
+	        console.log("Status: " + jqXHR.status + "\n" + errorThrown);
+	    }
+	});
 }
 
 // Adds the button to download the adjacency matrix as a json file
 function AddDownloadButton(json)
 {
-	var downloadButton = L.easyButton('Download', function(btn, map)
+	var downloadButton = L.easyButton(
 	{
-		var dl = document.createElement('a');
-		dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
-		dl.setAttribute('download', 'adjacencyMatrix.json');
-		dl.click();
+		states:[
+			{
+				icon: 'fa fa-download fa-2x',
+				onClick: function()
+				{ 
+					var dl = document.createElement('a');
+					dl.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(json));
+					dl.setAttribute('download', 'adjacencyMatrix.json');
+					dl.click();
+				}
+			}
+		]
 	}).addTo(map);
+}
+
+function AddInitGraphButton(json)
+{
+	var InitGraphButton = L.easyButton(
+	{
+		states: 
+		[
+			{
+			    stateName: 'idle',
+			    icon: 'fa fa-play fa-2x',
+			    title: 'InitGraph',
+			    onClick: function(control) 
+			    {
+					InitGraph(json);
+					CheckInitGraphStatus(control);
+					control.state('waiting-for-api');
+			    }
+			}, 
+			{
+				stateName: 'waiting-for-api',
+				icon: 'fa fa-spinner fa-pulse fa-2x',
+				title: 'WaitingForAPI',
+				onClick: function(control) 
+				{
+					// do nothing, were waiting for API to respond
+				},
+			},
+			{
+			    stateName: 'playing',
+			    icon: 'fa fa-stop fa-2x',
+			    title: 'InitGraph',
+			    onClick: function(control) 
+			    {
+					// stop simulation
+					control.state('idle');
+			    }
+			}, 
+		]
+	}).addTo(map);
+}
+
+function CheckInitGraphStatus(control)
+{
+	var checkInitGraphComplete = setInterval(function() 
+	{
+		if (InitGraphStatus == 200) 
+		{
+			console.log("Init Graph Successful");
+			control.state('playing');
+			clearInterval(checkInitGraphComplete);
+		}
+		else
+		{
+			alert("Init Graph Failure, check API settings");
+			control.state('idle');
+			clearInterval(checkInitGraphComplete);
+		}
+	}, 100); // check every 100ms
 }
 
 // Function to draw the nodes on the map
@@ -342,9 +390,10 @@ function InitAdjacencyMatrix()
 // Tests whether there are any all zero rows in the adjacency matrix
 function TestAdjacencyMatrixForEmptyRows()
 {
+	console.log("Testing adjacency matrix for unconnected nodes...");
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
-		var zeroRowIndeces = [];
+		var unconnectedRows = [];
 		var zeroCount = 0;
 		for(var j = 0; j < adjacencyMatrix.length; j++)
 		{
@@ -355,18 +404,18 @@ function TestAdjacencyMatrixForEmptyRows()
 		}
 		if(zeroCount == adjacencyMatrix.length)
 		{
-			zeroRowIndeces.push(adjacencyMatrix[i]);
+			unconnectedRows.push(adjacencyMatrix[i]);
 		}
 	}
-	if(zeroRowIndeces.length > 0)
+	if(unconnectedRows.length > 0)
 	{
-		console.log("Zero rows found in adjacency matrix at indeces...");
+		console.log("Unconnected nodes found in adjacency matrix at rows...");
+		console.log(unconnectedRows);
 	}
 	else
 	{
-		console.log("No zero rows found in adjacency matrix");
+		console.log("No unconnected nodes found in adjacency matrix");
 	}
-	return zeroRowIndeces;
 }
 
 // Returns a color corresponding to an edge weight
@@ -433,6 +482,7 @@ function ArrayReverse(arr)
 // Debug function to print out the adj matrix
 function PrintAdjacencyMatrix()
 {
+	console.log("Printing adjacency matrix generated from geojson data...");
 	console.log(adjacencyMatrix);
 }
 
