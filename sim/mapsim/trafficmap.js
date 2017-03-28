@@ -129,14 +129,17 @@ function UpdateData(data)
 		edges.push(edge);
 		edges.push(reverseEdge);
 	});
-
+	//console.log(edges);
 	InitMap();
 	InitAdjacencyMatrix();
-	InitGraphData();
-	DrawNodes();
-	DrawPolylines();
-	PrintAdjacencyMatrix();
 	TestAdjacencyMatrixForEmptyRows();
+	TestAdjacencyMatrixForDeadEndRows();
+	TestAdjacencyMatrixForSingleConnectedNodes();
+	//var polylineAnim = coroutine(AnimatePolylines);
+	//setInterval(polylineAnim, 3);
+	DrawPolylines();
+	DrawNodes();
+	//setInterval(polylineAnim2, 5);
 }
 
 // Initializes the leaflet map
@@ -330,14 +333,96 @@ function DrawNodes()
 {
 	for(var i = 0; i < edges.length; i++)
 	{
+		var popUpInfo = "<dl><dt><b>Node:</b></dt>"
+		           + "<dd>" + edges[i].startNode.index.toString() + "</dd>"
+		           + "<dt><b>LatLong:</b></dt>"
+		           + "<dd>[" + edges[i].startNode.latlng.toString() + "]</dd>";
+
 		// Draw a circle where the node is
-		var circle = L.circle(edges[i].startNode.latlng, 
+		var circleMarker = L.circleMarker(edges[i].startNode.latlng, 
 		{
-			color: 'blue',
-			fillColor: '#f03',
-			fillOpacity: 0.25,
+			color: 'black',
+			weight: 0.5,
+			opacity: 0.9, 
+			fillColor: 'white',
+			fillOpacity: 0.3,
 			radius: 5
-		}).addTo(map);
+		}).addTo(map).bindPopup(popUpInfo);
+		circleMarker.on("mouseover", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+				color: 'blue',
+				weight: 0.8,
+				opacity: 1, 
+				fillColor: 'blue',
+				fillOpacity: 0.7,
+				radius: 7
+		    });
+		});
+		circleMarker.on("mouseout", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+				color: 'black',
+				weight: 0.5,
+				opacity: 0.9, 
+				fillColor: 'white',
+				fillOpacity: 0.3,
+				radius: 5
+		    });
+		});
+	}
+}
+
+function* AnimateNodes()
+{
+	for(var i = 0; i < edges.length; i++)
+	{
+		var popUpInfo = "<dl><dt><b>Node:</b></dt>"
+		           + "<dd>" + edges[i].startNode.index.toString() + "</dd>"
+		           + "<dt><b>LatLong:</b></dt>"
+		           + "<dd>[" + edges[i].startNode.latlng.toString() + "]</dd>";
+
+		// Draw a circle where the node is
+		var circleMarker = L.circleMarker(edges[i].startNode.latlng, 
+		{
+			color: 'black',
+			weight: 0.5,
+			opacity: 0.9, 
+			fillColor: 'white',
+			fillOpacity: 0.3,
+			radius: 5
+		}).addTo(map).bindPopup(popUpInfo);
+		circleMarker.on("mouseover", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+				color: 'blue',
+				weight: 0.8,
+				opacity: 1, 
+				fillColor: 'blue',
+				fillOpacity: 0.7,
+				radius: 7
+		    });
+		});
+		circleMarker.on("mouseout", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+				color: 'black',
+				weight: 0.5,
+				opacity: 0.9, 
+				fillColor: 'white',
+				fillOpacity: 0.3,
+				radius: 5
+		    });
+		});
+		yield;
 	}
 }
 
@@ -346,21 +431,103 @@ function DrawPolylines()
 {
 	for(var i = 0; i < edges.length; i++)
 	{
+
+
+		var popUpInfo = "<dl><dt><b>Edge:</b></dt>"
+		           + "<dd>" + i + "</dd>"
+		           + "<dt><b>LatLong:</b></dt>"
+		           + "<dd>[" +  + edges[i].startNode.index.toString() + "->" +  edges[i].endNode.index.toString() + "]</dd>";
+
 		color = GetWeightedEdgeColor(edges[i]);
 		var polyline = new L.Polyline(edges[i].linePoints, 
 		{
 		    color: color,
-		    weight: 3,
-		    opacity: 0.5,
+		    weight: 2,
+		    opacity: 0.9,
 		    smoothFactor: 1
 		});
-		polyline.addTo(map);
+		polyline.on("mouseover", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+			    color: 'blue',
+			    weight: 3,
+			    opacity: 1
+		    });
+		});
+		polyline.on("mouseout", function(e)
+		{
+		   var layer = e.target;
+
+		    layer.setStyle({
+			    color: color,
+			    weight: 2,
+			    opacity: 0.9,
+			    smoothFactor: 1
+		    });
+		});
+		polyline.addTo(map).bindPopup(popUpInfo);
 	}
+}
+
+// Function to draw polylines between node neighbors on the map
+function* AnimatePolylines()
+{
+	for(var i = 0; i < edges.length; i++)
+	{
+
+		var popUpInfo = "<dl><dt><b>Edge:</b></dt>"
+		           + "<dd>" + i + "</dd>"
+		           + "<dt><b>Nodes:</b></dt>"
+		           + "<dd>[" +  + edges[i].startNode.index.toString() + "->" +  edges[i].endNode.index.toString() + "]</dd>";
+
+		for(var j = 0; j < edges[i].linePoints.length + 1; j++)
+		{
+
+			var points2Anim = edges[i].linePoints.slice(0,j);
+
+			color = GetWeightedEdgeColor(edges[i]);
+			var polyline = new L.Polyline(points2Anim, 
+			{
+			    color: color,
+			    weight: 2,
+			    opacity: 0.9,
+			    smoothFactor: 1
+			});
+			polyline.addTo(map).bindPopup(popUpInfo);
+			polyline.on("mouseover", function(e)
+			{
+			   var layer = e.target;
+
+			    layer.setStyle({
+				    color: 'blue',
+				    weight: 3,
+				    opacity: 1
+			    });
+			});
+			polyline.on("mouseout", function(e)
+			{
+			   var layer = e.target;
+
+			    layer.setStyle({
+				    color: color,
+				    weight: 2,
+				    opacity: 0.9,
+				    smoothFactor: 1
+			    });
+			});
+			yield;
+		}
+	}
+	var nodeAnim = coroutine(AnimateNodes);
+	setInterval(nodeAnim, 5);
 }
 
 // Fills matrix with 0's first, then sets a 1 if there is a connection between two indeces
 function InitAdjacencyMatrix()
 {
+	adjacencyMatrix = [];
 	// Fill matrix with 0's first
 	for(var i = 0; i < nodes.length; i++)
 	{
@@ -418,6 +585,81 @@ function TestAdjacencyMatrixForEmptyRows()
 	}
 }
 
+// Tests whether there are any all zero rows in the adjacency matrix
+function TestAdjacencyMatrixForDeadEndRows()
+{
+	console.log("Testing adjacency matrix for dead end nodes...");
+	var deadEndNodes = [];
+	for(var i = 0; i < adjacencyMatrix.length; i++)
+	{
+		var connectedIndeces = [];
+		for(var j = 0; j < adjacencyMatrix.length; j++)
+		{
+			if(adjacencyMatrix[i][j] > 0)
+			{
+				connectedIndeces.push(j);
+			}
+		}
+		//console.log(i + ": " + connectedIndeces);
+		for(var k = 0; k < connectedIndeces.length; k++)
+		{
+			if(adjacencyMatrix[connectedIndeces[k]][i] == 0)
+			{
+				deadEndNodes.push(k);
+			}
+		}
+	}
+	if(deadEndNodes.length > 0)
+	{
+		console.log("Dead end nodes found in adjacency matrix at rows...");
+		console.log(deadEndNodes);
+	}
+	else
+	{
+		console.log("No dead end nodes found in adjacency matrix");
+	}	
+}
+
+function TestAdjacencyMatrixForSingleConnectedNodes()
+{
+	console.log("Testing adjacency matrix for single connected nodes...");
+	var singleConnectedRows = [];
+	for(var i = 0; i < adjacencyMatrix.length; i++)
+	{
+		var zeroCount = 0;
+		for(var j = 0; j < adjacencyMatrix.length; j++)
+		{
+			if(adjacencyMatrix[i][j] == 0)
+			{
+				zeroCount++;
+			}
+		}
+		if(zeroCount == adjacencyMatrix.length-1)
+		{
+			singleConnectedRows.push(i);
+
+			var closestNode = FindClosestNode(nodes[i]);
+			edge = {startNode: nodes[i], endNode: closestNode, linePoints: [nodes[i].latlng, closestNode.latlng]};
+			edges.push(edge);
+			
+		}
+	}
+	if(singleConnectedRows.length > 0)
+	{
+		console.log("Single connected nodes found in adjacency matrix at rows...");
+		console.log(singleConnectedRows);
+		console.log("Updating Adjacency Matrix...");
+
+	}
+	else
+	{
+		console.log("No single connected nodes found in adjacency matrix");
+	}
+	InitAdjacencyMatrix();
+	InitGraphData();
+	PrintAdjacencyMatrix();
+}
+
 // Returns a color corresponding to an edge weight
 function GetWeightedEdgeColor(edge)
 {
@@ -440,43 +682,50 @@ function GetWeightedEdgeColor(edge)
 	return "#33FF43"
 }
 
-// Helper to get a random float in a range
-function RandomInRange(min, max) 
+function FindClosestNode(node)
 {
-	return Math.random() < 0.5 ? ((1-Math.random()) * (max-min) + min) : (Math.random() * (max-min) + min);
-}
-
-// Helper to get Euclidean Distance between two latlng coords
-function EuclideanDistance(coordsA, coordsB)
-{
-	return Math.sqrt(Math.pow((coordsB[0] - coordsA[0]), 2) + Math.pow((coordsB[1] - coordsA[1]), 2));
-}
-
-// Helper to check if two arrays are equal
-function ArraysEqual(arr1, arr2) 
-{
-    if(arr1.length !== arr2.length)
-        return false;
-
-    for(var i = arr1.length; i--;) {
-        if(arr1[i] !== arr2[i])
-            return false;
-    }
-    return true;
-}
-
-// helper function to store the reverse of an array without mutating the original and returning the reversed array
-// because in javascript Array.reverse() mutates the original before the console can print so its hard to debug
-function ArrayReverse(arr)
-{
-	reverseArr = [];
-
-	for(var i = arr.length-1; i > -1; i--)
+	console.log("Finding closest node to node: " + node.index);
+	var closest;
+	if(node.index < nodes.length-2)
 	{
-		reverseArr.push(arr[i]);
+		closest = nodes[node.index + 1];
+	}
+	else
+	{
+		closest = nodes[node.index - 1];
+	}
+	
+	var lastDistance = EuclideanDistance(node.latlng, closest.latlng);
+
+	for(var i = node.index; i < nodes.length; i++)
+	{
+		if(i != node.index)
+		{
+			var distance = EuclideanDistance(node.latlng, nodes[i].latlng)
+			if(distance < lastDistance)
+			{
+				closest = nodes[i];
+				lastDistance = distance;
+			}
+		}
 	}
 
-	return reverseArr;
+	for(var i = nodes.length-1; i > 0; i--)
+	{
+		if(i != node.index)
+		{
+			var distance = EuclideanDistance(node.latlng, nodes[i].latlng)
+			if(distance < lastDistance)
+			{
+				closest = nodes[i];
+				lastDistance = distance;
+			}
+		}
+	}
+
+	console.log(closest);
+	return closest;
+
 }
 
 // Debug function to print out the adj matrix
