@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify, abort, make_response
+from flask_cors import CORS, cross_origin
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_cors import CORS, cross_origin
+import sys
+import os
+sys.path.append(os.path.abspath('../algos'))
 import routing
 import json
 import traceback
@@ -33,19 +36,32 @@ def __get_request_key():
 
 @app.route('/initialize_graph', methods=['POST'])
 @limiter.limit(__get_request_key)
-@limiter.limit("1000000000000000 per second")
+@limiter.limit("1 per second")
 def initialize_graph():
     # if __check_preflight() is True:
     #     return __response("Preflight request. Not processed.", 200)
 
-    try:
-        api_identity = request.headers['api_id']
-        api_key = request.headers['api_key']
-    except Exception as e:
-        return __response("api_id header and/or api_key header not found. Please provide these headers to access this endpoint.", 401)
+    __authorize()
 
-    if(__isAuthorized(api_identity, api_key) is False):
-        return __response("api_id and/or api_key were found to be invalid. Access has been denied.", 401)
+    json_data = request.get_json(force=True)
+    success = True
+
+    try:
+        router.set_graph(json_data['map'], algos=json_data.get('algos', None))
+    except Exception as e:
+        success = False
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+        return __response(jsonify(reason_500="Error occurred while initializing the graph."), 500)
+
+    return jsonify()
+
+@app.route('/initialize_graph_dev', methods=['POST'])
+@limiter.limit("1000 per second")
+def initialize_graph_dev():
+    # if __check_preflight() is True:
+    #     return __response("Preflight request. Not processed.", 200)
 
     json_data = request.get_json(force=True)
     success = True
@@ -59,23 +75,16 @@ def initialize_graph():
         log_messages([tb, json.dumps(json_data)])
         return __response("Error occurred while initializing the graph.", 500)
 
-    return jsonify(success=str(success))
+    return jsonify()
 
-
-@app.route('/init_graph_unity', methods=['GET', 'POST'])
+@app.route('/init_graph_unity', methods=['POST'])
 @limiter.limit(__get_request_key)
 @limiter.limit("1 per minute")
 def init_graph_unity():
-    api_identity = request.headers['api_id']
-    api_key = request.headers['api_key']
-
-    if(__isAuthorized(api_identity, api_key) is False):
-        return ('Api identity or Api key could not be verified.', 401, {})
-
-    if request.method == 'GET':
-        return """This is a POST endpoint that takes in JSON of the format: {"map":[{"row":[<float>]}]} representing a 2d array of floating point numbers which represent the adjacency matrix of weights between street nodes."""
+    __authorize()
 
     json_data = request.get_json(force=True)
+
 
     adj_mat = []
     for row in json_data['map']:
@@ -96,10 +105,11 @@ def init_graph_unity():
     return "The graph was initialized: {}.".format(success)
 
 
-@app.route('/get_path', methods=['GET', 'POST'])
+@app.route('/get_path', methods=['POST'])
+@limiter.limit(__get_request_key)
+@limiter.limit("100 per second")
 def get_path():
-    if request.method == 'GET':
-        return """This is a POST endpoint that takes in JSON of the format: { "algorithm":<int> \n "source:<int>" \n "target:<int>"} representing which routing algorithm to use via an enumeration, the starting or source node, and the ending or target node."""
+    __authorize()
 
     json_data = request.get_json(force=True)
 
@@ -116,6 +126,38 @@ def get_path():
         log_messages([tb, json.dumps(json_data)])
 
     return jsonify(map=path)
+
+@app.route('/get_path_dev', methods=['POST'])
+@limiter.limit("100000 per second")
+def get_path_dev():
+
+    json_data = request.get_json(force=True)
+
+    algo = json_data['algorithm']
+    source = json_data['source']
+    target = json_data['target']
+
+    path = []
+    try:
+        path = router.get_path(algo, source, target)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        log_messages([tb, json.dumps(json_data)])
+
+    return jsonify(map=path)
+
+
+def __authorize():
+    try:
+        api_identity = request.headers['api_id']
+        api_key = request.headers['api_key']
+
+        if(__isAuthorized(api_identity, api_key) is False):
+            return __response(jsonify(reason_401="api_id and/or api_key were found to be invalid. Access has been denied."), 401)
+
+    except KeyError as e:
+        return __response(jsonify(reason_401="api_id header and/or api_key header not found. Please provide these headers to access this endpoint."), 401)
 
 def __isAuthorized(api_id, api_key):
 
