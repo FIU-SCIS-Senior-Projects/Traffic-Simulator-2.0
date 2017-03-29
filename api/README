@@ -2,22 +2,19 @@ To create new instance of executable trafficSimFlask.exe:
 Required python version: 3.5
 
 First pip3 install the following packages
-pyinstaller
 flask
 numpy
 networkx
+flask_limiter
+flask_cors
 
 Then on the spec file found in this directory, run the command
-pyinstaller trafficSimFlask.spec
+python trafficSimFlask.py
 
-which will create the trafficSimFlask.exe file in the Dist folder.
 
 **********************************************************************************
 
-To use Traffic Simulator Api:
-On a windows machine, start the file StartApi_TrafficSim.bat
-
-This will host the Api at localhost:5000
+This will host the Api at localhost:8000
 Endpoints:
 POST: /initialize_graph
 Body:
