@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import speed as sp
 
 from math import ceil, log2
 from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
@@ -84,7 +85,7 @@ class GraphDiam2h(nx.DiGraph):
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
         return frozenset(
-            [v for v in range(self.num_nodes) if self.all_sp_len[s][v] <= r]
+            sp.filter_above(len(self.all_sp_len[s]), self.all_sp_len[s], r)
         )
 
 
@@ -399,7 +400,7 @@ class GraphUtils:
             raise NonPowerOf2Graph("{}".format(G.diam))
 
         V = set(G.nodes())
-        num_iterations = const * int(log2(len(G.nodes())))
+        num_iterations = const * int(log2(len(V)))
 
         HDST_list = [None] * num_iterations
         for i in range(num_iterations):
