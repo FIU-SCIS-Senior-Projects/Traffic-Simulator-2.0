@@ -7,6 +7,7 @@ var defaultGeoDataFileName = "fiu_roads.geojson";
 var InitGraphURL = "http://localhost:5000/initialize_graph";
 var GetPathURL = "http://localhost:5000/get_path";
 var InitGraphStatus;
+var currentData;
 
 // Graph Structure
 var nodes = []
@@ -71,6 +72,7 @@ function InitData(file)
 // Updates the data when a new geojson file is dragged and dropped onto the map
 function UpdateData(data)
 {
+	currentData = data;
 	if(this.map != null)
 	{
 		// Need to do this since we are going to re-initialize the map now
@@ -137,8 +139,8 @@ function UpdateData(data)
 	TestAdjacencyMatrixForSingleConnectedNodes();
 	//var polylineAnim = coroutine(AnimatePolylines);
 	//setInterval(polylineAnim, 3);
-	DrawPolylines();
-	DrawNodes();
+	//DrawPolylines();
+	//DrawNodes();
 	//setInterval(polylineAnim2, 5);
 }
 
@@ -184,6 +186,7 @@ function InitMap()
 }
 
 
+
 // Initializes the graph structure and makes an API call to init the graph in the server side
 function InitGraphData()
 {
@@ -198,12 +201,12 @@ function InitGraphData()
 
 	AddDownloadButton(adjacencyMatrixJSON);
 	AddInitGraphButton(adjacencyMatrixJSON);
-
-
+	AddDrawGeoDataButton();
 }
 
 function InitGraph(jsonData)
 {
+	console.log("Requesting API Init Graph...");
 	InitGraphStatus = 0;
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
@@ -277,7 +280,7 @@ function AddInitGraphButton(json)
 		[
 			{
 			    stateName: 'idle',
-			    icon: 'fa fa-play fa-2x',
+			    icon: 'fa fa-road fa-2x',
 			    title: 'InitGraph',
 			    onClick: function(control) 
 			    {
@@ -309,6 +312,38 @@ function AddInitGraphButton(json)
 	}).addTo(map);
 }
 
+function AddDrawGeoDataButton()
+{
+	var DrawGeoDataButton = L.easyButton(
+	{
+		states: 
+		[
+			{
+			    stateName: 'draw',
+			    icon: 'fa fa-pencil fa-2x',
+			    title: 'DrawData',
+			    onClick: function(control) 
+			    {
+			    	DrawPolylines();
+			    	DrawNodes();
+					control.state('erase');
+			    }
+			}, 
+			{
+				stateName: 'erase',
+				icon: 'fa fa-eraser fa-2x',
+				title: 'WaitingForAPI',
+				onClick: function(control) 
+				{
+					UpdateData(currentData);
+				},
+			},
+		]
+	}).addTo(map);
+}
+
+
+
 function CheckInitGraphStatus(control)
 {
 	var checkInitGraphComplete = setInterval(function() 
@@ -325,7 +360,7 @@ function CheckInitGraphStatus(control)
 			control.state('idle');
 			clearInterval(checkInitGraphComplete);
 		}
-	}, 100); // check every 100ms
+	}, 500); // check every 100ms
 }
 
 // Function to draw the nodes on the map
@@ -557,7 +592,7 @@ function InitAdjacencyMatrix()
 // Tests whether there are any all zero rows in the adjacency matrix
 function TestAdjacencyMatrixForEmptyRows()
 {
-	console.log("Testing adjacency matrix for unconnected nodes...");
+	//console.log("Testing adjacency matrix for unconnected nodes...");
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
 		var unconnectedRows = [];
@@ -574,21 +609,21 @@ function TestAdjacencyMatrixForEmptyRows()
 			unconnectedRows.push(adjacencyMatrix[i]);
 		}
 	}
-	if(unconnectedRows.length > 0)
-	{
-		console.log("Unconnected nodes found in adjacency matrix at rows...");
-		console.log(unconnectedRows);
-	}
-	else
-	{
-		console.log("No unconnected nodes found in adjacency matrix");
-	}
+	// if(unconnectedRows.length > 0)
+	// {
+	// 	console.log("Unconnected nodes found in adjacency matrix at rows...");
+	// 	console.log(unconnectedRows);
+	// }
+	// else
+	// {
+	// 	console.log("No unconnected nodes found in adjacency matrix");
+	// }
 }
 
 // Tests whether there are any all zero rows in the adjacency matrix
 function TestAdjacencyMatrixForDeadEndRows()
 {
-	console.log("Testing adjacency matrix for dead end nodes...");
+	//console.log("Testing adjacency matrix for dead end nodes...");
 	var deadEndNodes = [];
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
@@ -609,20 +644,20 @@ function TestAdjacencyMatrixForDeadEndRows()
 			}
 		}
 	}
-	if(deadEndNodes.length > 0)
-	{
-		console.log("Dead end nodes found in adjacency matrix at rows...");
-		console.log(deadEndNodes);
-	}
-	else
-	{
-		console.log("No dead end nodes found in adjacency matrix");
-	}	
+	// if(deadEndNodes.length > 0)
+	// {
+	// 	console.log("Dead end nodes found in adjacency matrix at rows...");
+	// 	console.log(deadEndNodes);
+	// }
+	// else
+	// {
+	// 	console.log("No dead end nodes found in adjacency matrix");
+	// }	
 }
 
 function TestAdjacencyMatrixForSingleConnectedNodes()
 {
-	console.log("Testing adjacency matrix for single connected nodes...");
+	//console.log("Testing adjacency matrix for single connected nodes...");
 	var singleConnectedRows = [];
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
@@ -644,20 +679,20 @@ function TestAdjacencyMatrixForSingleConnectedNodes()
 			
 		}
 	}
-	if(singleConnectedRows.length > 0)
-	{
-		console.log("Single connected nodes found in adjacency matrix at rows...");
-		console.log(singleConnectedRows);
-		console.log("Updating Adjacency Matrix...");
+	// if(singleConnectedRows.length > 0)
+	// {
+	// 	console.log("Single connected nodes found in adjacency matrix at rows...");
+	// 	console.log(singleConnectedRows);
+	// 	console.log("Updating Adjacency Matrix...");
 
-	}
-	else
-	{
-		console.log("No single connected nodes found in adjacency matrix");
-	}
+	// }
+	// else
+	// {
+	// 	console.log("No single connected nodes found in adjacency matrix");
+	// }
 	InitAdjacencyMatrix();
 	InitGraphData();
-	PrintAdjacencyMatrix();
+	//PrintAdjacencyMatrix();
 }
 
 // Returns a color corresponding to an edge weight
@@ -684,7 +719,7 @@ function GetWeightedEdgeColor(edge)
 
 function FindClosestNode(node)
 {
-	console.log("Finding closest node to node: " + node.index);
+	//console.log("Finding closest node to node: " + node.index);
 	var closest;
 	if(node.index < nodes.length-2)
 	{
@@ -723,10 +758,13 @@ function FindClosestNode(node)
 		}
 	}
 
-	console.log(closest);
+	//console.log(closest);
 	return closest;
-
 }
+
+
+
+
 
 // Debug function to print out the adj matrix
 function PrintAdjacencyMatrix()
