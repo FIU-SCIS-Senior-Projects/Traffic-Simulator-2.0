@@ -337,16 +337,14 @@ class GraphUtils:
 
     @staticmethod
     def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
+        def _is_subset_of_a_cluster(nbhd, d_partition):
+            for cluster in d_partition:
+                if nbhd <= cluster: return True
+            return False
+
         for i, delta_partition in enumerate(hds):
             v_nbhd = G.r_neighborhood(v, alpha * (2 ** i))
-            is_subset = False
-
-            for cluster in delta_partition:
-                if v_nbhd <= cluster:
-                    is_subset = True
-                    break
-
-            if not is_subset:
+            if not _is_subset_of_a_cluster(v_nbhd, delta_partition):
                 return False
 
         return True
