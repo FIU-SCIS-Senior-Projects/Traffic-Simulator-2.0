@@ -4,10 +4,17 @@
 
 // Data Properties
 var defaultGeoDataFileName = "fiu_roads.geojson";
-var InitGraphURL = "http://localhost:5000/initialize_graph";
-var GetPathURL = "http://localhost:5000/get_path";
+var InitGraphURL = "http://localhost:5000/initialize_graph_dev";
+var GetPathURL = "http://localhost:5000/get_path_dev";
 var InitGraphStatus;
 var currentData;
+
+// Sim Properties
+var simStop = true;
+var GetPathRoutine;
+var InitGraphRoutine;
+var checkInitGraphRoutine;
+var vehicleMarkers = [];
 
 // Graph Structure
 var nodes = []
@@ -24,6 +31,8 @@ var boundsDeltaLat = 0.1;
 var maxZ = 25;
 var minZ = 12;
 var startZ = minZ;
+var polyLines = [];
+var circles = [];
 
 // Starts the map
 InitData(defaultGeoDataFileName);
@@ -126,8 +135,8 @@ function UpdateData(data)
 			nodes.push(endNode);
 		}
 
-		edge = {startNode: startNode, endNode: endNode, linePoints: coords};
-		reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords)};
+		edge = {startNode: startNode, endNode: endNode, linePoints: coords, vehicles: []};
+		reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords), vehicles: []};
 		edges.push(edge);
 		edges.push(reverseEdge);
 	});
@@ -137,6 +146,8 @@ function UpdateData(data)
 	TestAdjacencyMatrixForEmptyRows();
 	TestAdjacencyMatrixForDeadEndRows();
 	TestAdjacencyMatrixForSingleConnectedNodes();
+	AddDrawGeoDataButton();
+	PrintAdjacencyMatrix();
 	//var polylineAnim = coroutine(AnimatePolylines);
 	//setInterval(polylineAnim, 3);
 	//DrawPolylines();
@@ -201,7 +212,6 @@ function InitGraphData()
 
 	AddDownloadButton(adjacencyMatrixJSON);
 	AddInitGraphButton(adjacencyMatrixJSON);
-	AddDrawGeoDataButton();
 }
 
 function InitGraph(jsonData)
@@ -214,7 +224,7 @@ function InitGraph(jsonData)
 	    type: "POST",
 	    data : jsonData,
 	    dataType: "json",
-	    headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
+	    //headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
 	    success: function(data, textStatus, jqXHR)
 	    {
 	    	InitGraphStatus = jqXHR.status;
@@ -230,7 +240,7 @@ function InitGraph(jsonData)
 
 
 
-function GetPath(jsonData)
+function GetPath(jsonData, callback)
 {
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
@@ -238,15 +248,14 @@ function GetPath(jsonData)
 	    type: "POST",
 	    data : jsonData,
 	    dataType: "json",
-	    headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
+	    //headers: {'api_id': 'testuser1', 'api_key': 'a798e3d9-3222-4ce6-908f-a08102ece1a3'},
 	    success: function(data, textStatus, jqXHR)
 	    {
-	    	InitGraphStatus = jqXHR.status;
+	    	callback(data);
 	        console.log("\nStatus: " + jqXHR.status);
 	    },
 	    error: function (jqXHR, textStatus, errorThrown)
 	    {
-	    	InitGraphStatus = jqXHR.status;
 	        console.log("Status: " + jqXHR.status + "\n" + errorThrown);
 	    }
 	});
@@ -284,6 +293,7 @@ function AddInitGraphButton(json)
 			    title: 'InitGraph',
 			    onClick: function(control) 
 			    {
+			    	simStop = false;
 					InitGraph(json);
 					CheckInitGraphStatus(control);
 					control.state('waiting-for-api');
@@ -304,7 +314,8 @@ function AddInitGraphButton(json)
 			    title: 'InitGraph',
 			    onClick: function(control) 
 			    {
-					// stop simulation
+					simStop = true;
+					stopCoroutine(GetPathRoutine);
 					control.state('idle');
 			    }
 			}, 
@@ -319,23 +330,25 @@ function AddDrawGeoDataButton()
 		states: 
 		[
 			{
-			    stateName: 'draw',
-			    icon: 'fa fa-pencil fa-2x',
+			    stateName: 'show',
+			    icon: 'fa fa-eye fa-2x',
 			    title: 'DrawData',
 			    onClick: function(control) 
 			    {
 			    	DrawPolylines();
 			    	DrawNodes();
-					control.state('erase');
+					control.state('hide');
 			    }
 			}, 
 			{
-				stateName: 'erase',
-				icon: 'fa fa-eraser fa-2x',
+				stateName: 'hide',
+				icon: 'fa fa-eye-slash fa-2x',
 				title: 'WaitingForAPI',
 				onClick: function(control) 
 				{
-					UpdateData(currentData);
+					ErasePolyLines();
+					EraseNodes();
+					control.state('show');
 				},
 			},
 		]
@@ -346,26 +359,53 @@ function AddDrawGeoDataButton()
 
 function CheckInitGraphStatus(control)
 {
-	var checkInitGraphComplete = setInterval(function() 
+	checkInitGraphRoutine = setInterval(function() 
 	{
+		var graceCount = 0;
 		if (InitGraphStatus == 200) 
 		{
 			console.log("Init Graph Successful");
 			control.state('playing');
-			clearInterval(checkInitGraphComplete);
+			GetPathRoutine = coroutine(SimulatePaths);
+			setInterval(GetPathRoutine, 3000);
+			stopCoroutine(checkInitGraphRoutine);
 		}
-		else
+		else if(graceCount > 5)
 		{
 			alert("Init Graph Failure, check API settings");
 			control.state('idle');
-			clearInterval(checkInitGraphComplete);
+			stopCoroutine(checkInitGraphRoutine);
 		}
-	}, 500); // check every 100ms
+		graceCount++;
+	}, 1000); // check every 100ms
+}
+
+function* SimulatePaths()
+{
+	while(!simStop)
+	{
+		for(var i = 0; i < 20; i++)
+		{
+			var randStartIndex = RandomIntRange(0,30);
+			var randEndIndex = RandomIntRange(adjacencyMatrix.length-30,adjacencyMatrix.length-1);
+			var jsonObj = {"algorithm": 0, "source": randStartIndex, "target": randEndIndex};
+			var getPathJson = JSON.stringify(jsonObj);
+			GetPath(getPathJson, SpawnVehicle);
+		}
+		yield;
+	}
+
+}
+
+function SpawnVehicle(data)
+{
+	SimulateVehicle(data['map']);
 }
 
 // Function to draw the nodes on the map
 function DrawNodes()
 {
+	circles = [];
 	for(var i = 0; i < edges.length; i++)
 	{
 		var popUpInfo = "<dl><dt><b>Node:</b></dt>"
@@ -381,19 +421,19 @@ function DrawNodes()
 			opacity: 0.9, 
 			fillColor: 'white',
 			fillOpacity: 0.3,
-			radius: 5
+			radius: 3
 		}).addTo(map).bindPopup(popUpInfo);
 		circleMarker.on("mouseover", function(e)
 		{
 		   var layer = e.target;
 
 		    layer.setStyle({
-				color: 'blue',
+				color: 'black',
 				weight: 0.8,
 				opacity: 1, 
-				fillColor: 'blue',
+				fillColor: 'yellow',
 				fillOpacity: 0.7,
-				radius: 7
+				radius: 5
 		    });
 		});
 		circleMarker.on("mouseout", function(e)
@@ -406,9 +446,18 @@ function DrawNodes()
 				opacity: 0.9, 
 				fillColor: 'white',
 				fillOpacity: 0.3,
-				radius: 5
+				radius: 3
 		    });
 		});
+		circles.push(circleMarker);
+	}
+}
+
+function EraseNodes()
+{
+	for(var i = 0; i < circles.length; i++)
+	{
+		map.removeLayer(circles[i]);
 	}
 }
 
@@ -464,6 +513,7 @@ function* AnimateNodes()
 // Function to draw polylines between node neighbors on the map
 function DrawPolylines()
 {
+	polyLines = [];
 	for(var i = 0; i < edges.length; i++)
 	{
 
@@ -471,12 +521,15 @@ function DrawPolylines()
 		var popUpInfo = "<dl><dt><b>Edge:</b></dt>"
 		           + "<dd>" + i + "</dd>"
 		           + "<dt><b>LatLong:</b></dt>"
-		           + "<dd>[" +  + edges[i].startNode.index.toString() + "->" +  edges[i].endNode.index.toString() + "]</dd>";
+		           + "<dd>[" +  + edges[i].startNode.index.toString() + "->" +  edges[i].endNode.index.toString() + "]</dd>"
+		           + "<dl><dt><b>Weight:</b></dt>"
+		           + "<dd>" + edges[i].weight + "</dd>"
 
-		color = GetWeightedEdgeColor(edges[i]);
+		//var color = GetWeightedEdgeColor(edges[i]);
+
 		var polyline = new L.Polyline(edges[i].linePoints, 
 		{
-		    color: color,
+		    color: '#003fff',
 		    weight: 2,
 		    opacity: 0.9,
 		    smoothFactor: 1
@@ -486,23 +539,32 @@ function DrawPolylines()
 		   var layer = e.target;
 
 		    layer.setStyle({
-			    color: 'blue',
+			    color: 'yellow',
 			    weight: 3,
 			    opacity: 1
 		    });
 		});
 		polyline.on("mouseout", function(e)
 		{
-		   var layer = e.target;
+		   	var layer = e.target;
 
 		    layer.setStyle({
-			    color: color,
+			    color: '#003fff',
 			    weight: 2,
 			    opacity: 0.9,
 			    smoothFactor: 1
 		    });
 		});
 		polyline.addTo(map).bindPopup(popUpInfo);
+		polyLines.push(polyline);
+	}
+}
+
+function ErasePolyLines()
+{
+	for(var i = 0; i < polyLines.length; i++)
+	{
+		map.removeLayer(polyLines[i]);
 	}
 }
 
@@ -584,8 +646,10 @@ function InitAdjacencyMatrix()
 
 		var latlngA = edges[i].startNode.latlng;
 		var latlngB = edges[i].endNode.latlng;
-		adjacencyMatrix[indexA][indexB] = 1 + EuclideanDistance(latlngA, latlngB);
-		adjacencyMatrix[indexA][indexB] += RandomInRange(0.05, 0.1);
+		var weight = 1 + EuclideanDistance(latlngA, latlngB);
+		adjacencyMatrix[indexA][indexB] = weight;
+		edges[i].weight = weight;
+		//console.log(edges[i]);
 	}
 }
 
@@ -700,21 +764,32 @@ function GetWeightedEdgeColor(edge)
 {
 	var startIndex = edge.startNode.index;
 	var endIndex = edge.endNode.index;
-	var weight = adjacencyMatrix[startIndex][endIndex] - 1;
+	var weight = (adjacencyMatrix[startIndex][endIndex] - 1) * 100;
 
-	if(weight > 0.1)
-		return "#FF5733"
 
-	if(weight > 0.9)
-		return "#FFF633"
+	// worst
+	if(weight > 9)
+	{
+		return "#f44b42"
+	}
+	// bad
+	else if(weight > 7)
+	{
+		return "#f49b41"
+	}
+	// ok
+	else if(weight > 5)
+	{
+		return "#ecf475"
+	}
+	// good
+	else if(weight > 3)
+	{
+		return "#a6e855"
+	}
 
-	if(weight > 0.08)
-		return "#D1FF33"
-
-	if(weight > 0.07)
-		return "#9BFF33"
-
-	return "#33FF43"
+	// best
+	return "#00ff04"
 }
 
 function FindClosestNode(node)
@@ -762,8 +837,113 @@ function FindClosestNode(node)
 	return closest;
 }
 
+function GetEdge(startNode, endNode)
+{
+	for(var i = 0; i < edges.length; i++)
+	{
+		if(edges[i].startNode == nodes[startNode] && edges[i].endNode == nodes[endNode])
+		{
+			return edges[i];
+		}
+	}
+}
+
+function SimulateVehicle(path)
+{
+	var pathPoints = GetPathPoints(path);
+
+	var line = L.polyline(pathPoints);
+
+	var carIcon = L.icon.mapkey({icon: '', background: '#ff2100', size:5, boxShadow: false});
 
 
+
+    var animatedMarker = L.animatedMarker(line.getLatLngs(), 
+    {
+		distance: 750,  // meters
+		interval: 100, // milliseconds
+		icon: carIcon,
+		onEnd: function()
+		{
+			//vehicleMarkers.remove(animatedMarker);
+			map.removeLayer(animatedMarker);
+		}
+	});
+
+	map.addLayer(animatedMarker);
+
+	//vehicleMarkers.push(animatedMarker);
+
+	// StyleVehiclesRoutine = coroutine(StyleVehicles, animatedMarker);
+	// setInterval(StyleVehiclesRoutine, 100);
+
+}
+
+
+
+function* StyleVehicles(vehicle)
+{
+	while(!simStop)
+	{
+		var point = [vehicle.getLatLng().lat, vehicle.getLatLng().lng];
+		var edge = GetClosestEdgeToPoint(point);
+		if(!edge.vehicles.includes(vehicle))
+		{
+			edge.vehicles.push(vehicles);
+		}
+		var color = GetWeightedEdgeColor(edge);
+		vehicle._icon.firstChild.style.backgroundColor = color;
+		yield;
+	}	
+}
+
+function* CountVehicles()
+{
+	while(!simStop)
+	{
+		for(var i = 0; i < edges.length; i++)
+		{
+			var vehicleCount = edges[i].vehicles.length;
+			var startIndex = edges[i].startNode.index;
+			var endIndex = edges[i].endNode.index;
+			adjacencyMatrix[startIndex][endIndex] += vehicleCount/100;
+			PrintAdjacencyMatrix();
+		}
+		yield;
+	}
+}
+
+function GetClosestEdgeToPoint(point)
+{
+	for(var i = 0; i < edges.length; i++)
+	{
+		//console.log(point);
+		for(var j = 0; j < edges[i].linePoints.length; j++)
+		{
+			//console.log(edges[i].linePoints[j] + ", " + point);
+			if(ArraysEqual(edges[i].linePoints[j], point))
+			{
+				//console.log(edges[i].linePoints[j] + ", " + point);
+				return edges[i];
+			}
+			
+		}
+	}
+}
+
+function GetPathPoints(path)
+{
+	var pathPoints = [];
+	for(var i = 0; i < path.length-1; i++)
+	{
+		//console.log(path[i] + "->" + path[i+1]);
+		var edge = GetEdge(path[i], path[i+1]);
+		//console.log(edge.linePoints);
+		pathPoints = pathPoints.concat(edge.linePoints);
+		
+	}
+	return pathPoints;
+}
 
 
 // Debug function to print out the adj matrix

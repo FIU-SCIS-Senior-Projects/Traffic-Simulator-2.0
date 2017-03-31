@@ -5,3 +5,8 @@ function coroutine(f, options) {
         o.next(x);
     }
 }
+
+function stopCoroutine(routine)
+{
+	clearInterval(routine);
+}
