@@ -13,6 +13,7 @@ var currentData;
 var simStop = true;
 var getPathRoutine;
 var checkInitGraphRoutine;
+var simNumActiveVehicles = 0;
 
 // Graph Structure
 var nodes = []
@@ -201,7 +202,7 @@ function InitGraphData()
 	// [2.0, 0.0, 0.0, 4.0],
 	// [0.0, 1.0, 1.0, 0.0]];
 
-	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0]};
+	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0,1]};
 	var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
 
 	AddDownloadButton(adjacencyMatrixJSON);
@@ -386,7 +387,7 @@ function* SimulatePaths()
 		{
 			var randStartIndex = RandomIntRange(0,10);
 			var randEndIndex = RandomIntRange(adjacencyMatrix.length-10,adjacencyMatrix.length-1);
-			var jsonObj = {"algorithm": 0, "source": randStartIndex, "target": randEndIndex};
+			var jsonObj = {"algorithm": 1, "source": randStartIndex, "target": randEndIndex};
 			var getPathJson = JSON.stringify(jsonObj);
 			GetPath(getPathJson, SpawnVehicle);
 		}
@@ -398,7 +399,8 @@ function* SimulatePaths()
 // Extracts the path from the data and spawns a simualted vehicle
 function SpawnVehicle(data)
 {
-	SimulateVehicle(data['map']);
+	var path = data['map'];
+	SimulateVehicle(path);
 }
 
 
@@ -406,19 +408,25 @@ function SpawnVehicle(data)
 function SimulateVehicle(path)
 {
 	var pathPoints = GetPathPoints(path);
-
 	var line = L.polyline(pathPoints);
 
-	var carIcon = L.icon.mapkey({icon: '', background: '#ff2100', size:3, boxShadow: false});
+	var carIcon = L.icon.mapkey(
+	{
+		icon: '', 
+		background: '#ff2100', 
+		size:4, 
+		boxShadow: false,
+		additionalCSS: "box-shadow: 0px 0px 10px #ff2100;",
+	});
 
 
 
     var animatedMarker = L.animatedMarker(line.getLatLngs(), 
     {
-		distance: 2000,  // meters
-		interval: 500, // milliseconds
+		distance: 500,  // meters
+		interval: 100, // milliseconds
 		icon: carIcon,
-		onEnd: function()
+		onEnd: function(path)
 		{
 			map.removeLayer(animatedMarker);
 		}
@@ -562,7 +570,7 @@ function DrawPolylines()
 		{
 		    color: '#003fff',
 		    weight: 2,
-		    opacity: 0.9,
+		    opacity: 0.1,
 		    smoothFactor: 1
 		});
 		polyline.on("mouseover", function(e)
@@ -572,7 +580,7 @@ function DrawPolylines()
 		    layer.setStyle({
 			    color: 'yellow',
 			    weight: 3,
-			    opacity: 1
+			    opacity: 0.5
 		    });
 		});
 		polyline.on("mouseout", function(e)
@@ -582,7 +590,7 @@ function DrawPolylines()
 		    layer.setStyle({
 			    color: '#003fff',
 			    weight: 2,
-			    opacity: 0.9,
+			    opacity: 0.1,
 			    smoothFactor: 1
 		    });
 		});
