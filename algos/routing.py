@@ -63,19 +63,29 @@ class GraphDiam2h(nx.DiGraph):
         self._mat = GraphUtils.create_pow2_diameter_mat(M)
 
         super(GraphDiam2h, self).__init__(self._mat)
+        self.num_nodes = len(self.nodes())
 
         self.all_pairs_sp, self.all_sp_len = \
             GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
 
+        # For every node v in graph, denote the distance to v from some other
+        # node w in graph. See page 31 for definition of Ball.
+        self.all_v_neighbor_dists = [
+            array('f', [0.0] * self.num_nodes) for _ in range(self.num_nodes)
+        ]
+        # This is the equivalent of a transpose on the self.all_sp_len
+        # "matrix."
+        for i in range(self.num_nodes):
+            for j in range(self.num_nodes):
+                # Get shortest path length from the other node to this node.
+                self.all_v_neighbor_dists[i][j] = self.all_sp_len[j][i]
+
         # Removing any floating point imprecision with round. This has been
         # constructed to be a power of 2, see Lemma 3.1 for more details.
         self.diam = round(self._max_sp())
-        self.num_nodes = len(self.nodes())
 
     def _max_sp(self):
-        return max(
-            [max(dists) for dists in self.all_sp_len]
-        )
+        return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
         return self.all_pairs_sp[(s, t)]
@@ -84,8 +94,13 @@ class GraphDiam2h(nx.DiGraph):
         return self.all_sp_len[s][t]
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
+        """Return all nodes t in graph which have distance <= r from t -> s."""
         return frozenset(
-            sp.filter_above(len(self.all_sp_len[s]), self.all_sp_len[s], r)
+            sp.filter_out_above(
+                len(self.all_v_neighbor_dists[s]),
+                self.all_v_neighbor_dists[s],
+                r
+            )
         )
 
 
@@ -100,17 +115,6 @@ class GraphUtils:
         # @TODO: choose the better algorithm depending on the density of
         # the graph
         return nx.floyd_warshall_numpy(G).max()
-
-    @staticmethod
-    def r_neighborhood(G, v: int, r: float) -> FrozenSet[int]:
-        """Get the set of vertices that are within r distance of v.
-        """
-        try:
-            nbhd = nx.single_source_dijkstra_path_length(G, v, cutoff=r)
-        except KeyError:
-            raise VertexNonExistent
-
-        return frozenset(nbhd.keys())
 
     @staticmethod
     def create_pow2_diameter_mat(np_mat):
@@ -201,7 +205,6 @@ class GraphUtils:
         V = frozenset(np.arange(num_vertices))
 
         if not pi:
-            # @TODO: check that this is a uniform permutation
             pi = np.random.permutation(num_vertices)
         # print("Random permutation: {}".format(pi))
 
@@ -220,40 +223,43 @@ class GraphUtils:
 
         for i in reversed(range(h)):
             H_i = set()
-            r = U * 2**(i-1)
+            r = U * (2**(i-1))
             memoized_nbhds = {}  # type: Dict[Tuple[int, int], List[int]]
 
-            for C in H[i+1]:
-                cluster_set = C
-                for v in cluster_set:
+            for cluster in H[i+1]:
+                for v in cluster:
                     v_ver = vertex_dict[v]
+
                     v_ver.cluster = set()
                     v_ver.flag = True
-
                     v_ver.rep = None
-                    for j in pi:
-                        if (v, i) not in memoized_nbhds:
-                            v_nbhd = G.r_neighborhood(v, r)
-                            memoized_nbhds[(v, i)] = v_nbhd
-                        else:
-                            v_nbhd = memoized_nbhds[(v, i)]
 
-                        if j in cluster_set and j in v_nbhd:
+                    if (v, i) not in memoized_nbhds:
+                        v_nbhd = G.r_neighborhood(v, r)
+                        memoized_nbhds[(v, i)] = v_nbhd
+                    else:
+                        v_nbhd = memoized_nbhds[(v, i)]
+
+                    # Get first vertex in random permutation that is both
+                    # in cluster and in the r_neighborhood of v. Set this
+                    # vertex as the representative of v.
+                    for j in pi:
+                        if j in cluster and j in v_nbhd:
                             v_ver.rep = j
                             break
 
-                    # Something is wrong if this triggers
+                    # Could not find a representative. Something is wrong.
                     assert(v_ver.rep is not None)
 
-                for v in cluster_set:
+                for v in cluster:
                     v_ver = vertex_dict[v]
-                    for u in cluster_set:
+                    for u in cluster:
                         u_ver = vertex_dict[u]
                         if u_ver.flag and u_ver.rep == v:
                             u_ver.flag = False
                             v_ver.cluster.add(u)
 
-                for v in cluster_set:
+                for v in cluster:
                     v_ver = vertex_dict[v]
                     if v_ver.cluster:
                         H_i.add(frozenset(v_ver.cluster))
@@ -336,15 +342,17 @@ class GraphUtils:
         return GraphUtils.compress_path(projection_path)
 
     @staticmethod
-    def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
+    def check_alpha_padded(
+            G, hds: HDS, alpha: float, v: int, debug=False) -> bool:
         def _is_subset_of_a_cluster(nbhd, d_partition):
             for cluster in d_partition:
                 if nbhd <= cluster: return True
             return False
 
         for i, delta_partition in enumerate(hds):
-            v_nbhd = G.r_neighborhood(v, alpha * (2 ** i))
+            v_nbhd = G.r_neighborhood(v, alpha * (2**i))
             if not _is_subset_of_a_cluster(v_nbhd, delta_partition):
+                if debug: print(i)
                 return False
 
         return True
@@ -407,15 +415,16 @@ class GraphUtils:
 
             HDST_list[i] = (hds, hdt)
 
-        S = {}  # type: Dict[Tuple[int, int], List[int]]
+        scheme = {}  # type: Dict[Tuple[int, int], List[int]]
         alpha = min((1 / log2(len(V))), 1/8)
 
         for s in V:
             for t in V - {s}:
                 tree = None
 
-                for i in range(num_iterations):
-                    hds, hdt = HDST_list[i]
+                # for i in range(num_iterations):
+                    # hds, hdt = HDST_list[i]
+                for (hds, hdt) in HDST_list:
 
                     s_alpha_padded = \
                         GraphUtils.check_alpha_padded(G, hds, alpha, s)
@@ -433,12 +442,12 @@ class GraphUtils:
                 t_node = HDT_Node(frozenset([t]), 0)
 
                 path = GraphUtils.HDT_leaf_to_leaf_path(tree, s_node, t_node)
-                S[(s, t)] = GraphUtils.projection(G, path)
+                scheme[(s, t)] = GraphUtils.projection(G, path)
 
         for v in V:
-            S[(v, v)] = [v]
+            scheme[(v, v)] = [v]
 
-        return S
+        return scheme
 
     @staticmethod
     def create_in_out_mat(M, new_weight=np.float64(1)):

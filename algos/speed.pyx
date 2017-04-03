@@ -1,4 +1,4 @@
-cpdef filter_above(size_t max_i, float[:] vals, float r):
+cpdef filter_out_above(size_t max_i, float[:] vals, float r):
     nbhd = []
 
     cdef float t
