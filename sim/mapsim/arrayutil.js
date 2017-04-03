@@ -24,3 +24,11 @@ function ArrayReverse(arr)
 
 	return reverseArr;
 }
+
+// use: console.log([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(normalize(5, 15)));
+function ArrayNormalize(min, max) {
+    var delta = max - min;
+    return function (val) {
+        return (val - min) / delta;
+    };
+}

@@ -14,6 +14,7 @@ var simStop = true;
 var getPathRoutine;
 var checkInitGraphRoutine;
 var simNumActiveVehicles = 0;
+var displayPolyLines = false;
 
 // Graph Structure
 var nodes = []
@@ -134,8 +135,8 @@ function UpdateData(data)
 			nodes.push(endNode);
 		}
 
-		edge = {startNode: startNode, endNode: endNode, linePoints: coords, vehicles: []};
-		reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords), vehicles: []};
+		edge = {startNode: startNode, endNode: endNode, linePoints: coords, polyLine: null};
+		reverseEdge = {startNode: endNode, endNode: startNode, linePoints: ArrayReverse(coords), polyLine: null};
 		edges.push(edge);
 		edges.push(reverseEdge);
 	});
@@ -189,6 +190,7 @@ function InitMap()
 		'Traffic Flow': MQ.trafficLayer({layers: ['flow']}),
 		'Traffic Incidents': MQ.trafficLayer({layers: ['incidents']})
 	}).addTo(map);
+
 }
 
 
@@ -202,7 +204,7 @@ function InitGraphData()
 	// [2.0, 0.0, 0.0, 4.0],
 	// [0.0, 1.0, 1.0, 0.0]];
 
-	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0,1]};
+	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0]};
 	var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
 
 	AddDownloadButton(adjacencyMatrixJSON);
@@ -335,6 +337,7 @@ function AddDrawGeoDataButton()
 			    {
 			    	DrawPolylines();
 			    	DrawNodes();
+			    	displayPolyLines = true;
 					control.state('hide');
 			    }
 			}, 
@@ -346,6 +349,7 @@ function AddDrawGeoDataButton()
 				{
 					ErasePolyLines();
 					EraseNodes();
+					displayPolyLines = false;
 					control.state('show');
 				},
 			},
@@ -366,6 +370,10 @@ function CheckInitGraphStatus(control)
 			control.state('playing');
 			getPathRoutine = coroutine(SimulatePaths);
 			setInterval(getPathRoutine, 3000);
+			var CoolDownAdjacencyMatrixRoutine = coroutine(CoolDownAdjacencyMatrix);
+			setInterval(CoolDownAdjacencyMatrixRoutine, 500);
+			var UpdatePolyLinesRoutine = coroutine(UpdatePolyLines);
+			setInterval(UpdatePolyLinesRoutine, 3000);
 			stopCoroutine(checkInitGraphRoutine);
 		}
 		else if(graceCount > 5)
@@ -387,19 +395,19 @@ function* SimulatePaths()
 		{
 			var randStartIndex = RandomIntRange(0,10);
 			var randEndIndex = RandomIntRange(adjacencyMatrix.length-10,adjacencyMatrix.length-1);
-			var jsonObj = {"algorithm": 1, "source": randStartIndex, "target": randEndIndex};
+			var jsonObj = {"algorithm": 0, "source": randStartIndex, "target": randEndIndex};
 			var getPathJson = JSON.stringify(jsonObj);
 			GetPath(getPathJson, SpawnVehicle);
 		}
 		yield;
 	}
-
 }
 
 // Extracts the path from the data and spawns a simualted vehicle
 function SpawnVehicle(data)
 {
 	var path = data['map'];
+	UpdateAdjacencyMatrix(path);
 	SimulateVehicle(path);
 }
 
@@ -413,13 +421,11 @@ function SimulateVehicle(path)
 	var carIcon = L.icon.mapkey(
 	{
 		icon: '', 
-		background: '#ff2100', 
+		background: '#ff001d', 
 		size:4, 
 		boxShadow: false,
-		additionalCSS: "box-shadow: 0px 0px 10px #ff2100;",
+		additionalCSS: "box-shadow: 0px 0px 10px #ff001d;",
 	});
-
-
 
     var animatedMarker = L.animatedMarker(line.getLatLngs(), 
     {
@@ -437,6 +443,56 @@ function SimulateVehicle(path)
 	// StyleVehiclesRoutine = coroutine(StyleVehicles, animatedMarker);
 	// setInterval(StyleVehiclesRoutine, 100);
 
+}
+
+// Increases the weight of any edge located in the matrix that is being used in a path
+function UpdateAdjacencyMatrix(path)
+{
+	for(var i = 0; i < path.length-1; i++)
+	{
+		var startIndex = path[i];
+		var endIndex = path[i+1];
+		adjacencyMatrix[startIndex][endIndex] += Normalize(adjacencyMatrix[startIndex][endIndex], 0, 2);
+		if(adjacencyMatrix[startIndex][endIndex] > 2)
+		{
+			adjacencyMatrix[startIndex][endIndex] = 2;
+		}
+		//console.log(adjacencyMatrix[startIndex][endIndex]);
+	}
+	//console.log(adjacencyMatrix[0][1]);
+}
+
+function* UpdatePolyLines()
+{
+	while(!simStop)
+	{
+		if(displayPolyLines)
+		{
+			ErasePolyLines();
+			DrawPolylines();
+		}
+		yield;
+	}
+
+}
+
+function* CoolDownAdjacencyMatrix()
+{
+	while(!simStop)
+	{
+		for(var i = 0; i < adjacencyMatrix.length; i++)
+		{
+			for(var j = 0; j < adjacencyMatrix.length; j++)
+			{
+				
+				if(!(adjacencyMatrix[i][j] - 0.1 < 1.0))
+				{
+					adjacencyMatrix[i][j] -= 0.1;
+				}
+			}
+		}
+		yield;
+	}
 }
 
 // Function to draw the nodes on the map
@@ -559,18 +615,18 @@ function DrawPolylines()
 
 		var popUpInfo = "<dl><dt><b>Edge:</b></dt>"
 		           + "<dd>" + i + "</dd>"
-		           + "<dt><b>LatLong:</b></dt>"
+		           + "<dt><b>Adjacency Indeces:</b></dt>"
 		           + "<dd>[" +  + edges[i].startNode.index.toString() + "->" +  edges[i].endNode.index.toString() + "]</dd>"
-		           + "<dl><dt><b>Weight:</b></dt>"
-		           + "<dd>" + edges[i].weight + "</dd>"
+   		           + "<dt><b>Adjacency Weight:</b></dt>"
+		           + "<dd>" + adjacencyMatrix[edges[i].startNode.index][edges[i].endNode.index] + "</dd>"
 
-		//var color = GetWeightedEdgeColor(edges[i]);
+		var color = GetWeightColor(adjacencyMatrix[edges[i].startNode.index][edges[i].endNode.index]);
 
 		var polyline = new L.Polyline(edges[i].linePoints, 
 		{
-		    color: '#003fff',
+		    color: color,
 		    weight: 2,
-		    opacity: 0.1,
+		    opacity: 0.6,
 		    smoothFactor: 1
 		});
 		polyline.on("mouseover", function(e)
@@ -578,9 +634,8 @@ function DrawPolylines()
 		   var layer = e.target;
 
 		    layer.setStyle({
-			    color: 'yellow',
 			    weight: 3,
-			    opacity: 0.5
+			    opacity: 1,
 		    });
 		});
 		polyline.on("mouseout", function(e)
@@ -588,15 +643,17 @@ function DrawPolylines()
 		   	var layer = e.target;
 
 		    layer.setStyle({
-			    color: '#003fff',
 			    weight: 2,
-			    opacity: 0.1,
+			    opacity: 0.6,
 			    smoothFactor: 1
 		    });
 		});
 		polyline.addTo(map).bindPopup(popUpInfo);
 		polyLines.push(polyline);
+		edges[i].polyLine = polyline;
 	}
+	console.log(edges);
+			
 }
 
 // Removes the polylines from the map layer
@@ -688,7 +745,6 @@ function InitAdjacencyMatrix()
 		var latlngB = edges[i].endNode.latlng;
 		var weight = 1 + EuclideanDistance(latlngA, latlngB);
 		adjacencyMatrix[indexA][indexB] = weight;
-		edges[i].weight = weight;
 		//console.log(edges[i]);
 	}
 }
@@ -801,36 +857,31 @@ function TestAdjacencyMatrixForSingleConnectedNodes()
 }
 
 // Returns a color corresponding to an edge weight (not currently being used)
-function GetWeightedEdgeColor(edge)
+function GetWeightColor(weight)
 {
-	var startIndex = edge.startNode.index;
-	var endIndex = edge.endNode.index;
-	var weight = (adjacencyMatrix[startIndex][endIndex] - 1) * 100;
-
-
 	// worst
-	if(weight > 9)
+	if(weight > 1.9)
 	{
-		return "#f44b42"
+		return "#ff1d00"
 	}
 	// bad
-	else if(weight > 7)
+	else if(weight > 1.8)
 	{
-		return "#f49b41"
+		return "#ff9d00"
 	}
 	// ok
-	else if(weight > 5)
+	else if(weight > 1.7)
 	{
-		return "#ecf475"
+		return "#fff600"
 	}
 	// good
-	else if(weight > 3)
+	else if(weight > 1.6)
 	{
-		return "#a6e855"
+		return "#c7ff00"
 	}
 
 	// best
-	return "#00ff04"
+	return "#00ff2e"
 }
 
 // Finds the closest node to another node (needs to be optimized)
@@ -891,22 +942,22 @@ function GetEdge(startNode, endNode)
 	}
 }
 
-// Sets the color of a vehicle based on the weight of the edge its on (not currently in use)
-function* StyleVehicles(vehicle)
-{
-	while(!simStop)
-	{
-		var point = [vehicle.getLatLng().lat, vehicle.getLatLng().lng];
-		var edge = GetClosestEdgeToPoint(point);
-		if(!edge.vehicles.includes(vehicle))
-		{
-			edge.vehicles.push(vehicles);
-		}
-		var color = GetWeightedEdgeColor(edge);
-		vehicle._icon.firstChild.style.backgroundColor = color;
-		yield;
-	}	
-}
+// // Sets the color of a vehicle based on the weight of the edge its on (not currently in use)
+// function* StyleVehicles(vehicle)
+// {
+// 	while(!simStop)
+// 	{
+// 		var point = [vehicle.getLatLng().lat, vehicle.getLatLng().lng];
+// 		var edge = GetClosestEdgeToPoint(point);
+// 		if(!edge.vehicles.includes(vehicle))
+// 		{
+// 			edge.vehicles.push(vehicles);
+// 		}
+// 		var color = GetWeightedEdgeColor(edge);
+// 		vehicle._icon.firstChild.style.backgroundColor = color;
+// 		yield;
+// 	}	
+// }
 
 // Finds the closest edge given a point on the map (not currently working properly)
 function GetClosestEdgeToPoint(point)
