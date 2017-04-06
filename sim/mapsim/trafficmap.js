@@ -204,7 +204,7 @@ function InitGraphData()
 	// [2.0, 0.0, 0.0, 4.0],
 	// [0.0, 1.0, 1.0, 0.0]];
 
-	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0]};
+	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0,1]};
 	var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
 
 	AddDownloadButton(adjacencyMatrixJSON);
@@ -395,7 +395,7 @@ function* SimulatePaths()
 		{
 			var randStartIndex = RandomIntRange(0,10);
 			var randEndIndex = RandomIntRange(adjacencyMatrix.length-10,adjacencyMatrix.length-1);
-			var jsonObj = {"algorithm": 0, "source": randStartIndex, "target": randEndIndex};
+			var jsonObj = {"algorithm": 1, "source": randStartIndex, "target": randEndIndex};
 			var getPathJson = JSON.stringify(jsonObj);
 			GetPath(getPathJson, SpawnVehicle);
 		}
