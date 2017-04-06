@@ -429,8 +429,8 @@ class GraphUtils:
             raise NonPowerOf2Graph("{}".format(G.diam))
 
         V = set(G.nodes())
-        num_iterations = const * int(log2(len(V)))
 
+        num_iterations = const * int(log2(len(V)))
         HDST_list = [None] * num_iterations
         for i in range(num_iterations):
             hds = GraphUtils.randomized_HDS_gen(G)
@@ -438,24 +438,23 @@ class GraphUtils:
 
             HDST_list[i] = (hds, hdt)
 
-        scheme = {}  # type: Dict[Tuple[int, int], List[int]]
         alpha = min((1 / log2(len(V))), 1/8)
+        alpha_padded = {}
+        for node in V:
+            alpha_padded[node] = [False] * num_iterations
+            for i, (hds, _) in enumerate(HDST_list):
+                alpha_padded[node][i] = \
+                    GraphUtils.check_alpha_padded(G, hds, alpha, node)
+
+        scheme = {}  # type: Dict[Tuple[int, int], List[int]]
 
         for s in V:
             for t in V - {s}:
                 tree = None
 
-                # for i in range(num_iterations):
-                    # hds, hdt = HDST_list[i]
-                for (hds, hdt) in HDST_list:
-
-                    s_alpha_padded = \
-                        GraphUtils.check_alpha_padded(G, hds, alpha, s)
-                    t_alpha_padded = \
-                        GraphUtils.check_alpha_padded(G, hds, alpha, t)
-
-                    if s_alpha_padded and t_alpha_padded:
-                        tree = hdt
+                for i in range(num_iterations):
+                    if alpha_padded[s][i] and alpha_padded[t][i]:
+                        tree = HDST_list[i][1]
                         break
 
                 # if tree is None:
