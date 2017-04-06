@@ -652,7 +652,6 @@ function DrawPolylines()
 		polyLines.push(polyline);
 		edges[i].polyLine = polyline;
 	}
-	console.log(edges);
 			
 }
 
@@ -752,7 +751,7 @@ function InitAdjacencyMatrix()
 // Tests whether there are any all zero rows in the adjacency matrix
 function TestAdjacencyMatrixForEmptyRows()
 {
-	//console.log("Testing adjacency matrix for unconnected nodes...");
+	console.log("Testing adjacency matrix for unconnected nodes...");
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
 		var unconnectedRows = [];
@@ -769,21 +768,21 @@ function TestAdjacencyMatrixForEmptyRows()
 			unconnectedRows.push(adjacencyMatrix[i]);
 		}
 	}
-	// if(unconnectedRows.length > 0)
-	// {
-	// 	console.log("Unconnected nodes found in adjacency matrix at rows...");
-	// 	console.log(unconnectedRows);
-	// }
-	// else
-	// {
-	// 	console.log("No unconnected nodes found in adjacency matrix");
-	// }
+	if(unconnectedRows.length > 0)
+	{
+		console.log("Unconnected nodes found in adjacency matrix at rows...");
+		console.log(unconnectedRows);
+	}
+	else
+	{
+		console.log("No unconnected nodes found in adjacency matrix");
+	}
 }
 
 // Tests whether there are any all zero rows in the adjacency matrix
 function TestAdjacencyMatrixForDeadEndRows()
 {
-	//console.log("Testing adjacency matrix for dead end nodes...");
+	console.log("Testing adjacency matrix for dead end nodes...");
 	var deadEndNodes = [];
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
@@ -792,32 +791,18 @@ function TestAdjacencyMatrixForDeadEndRows()
 		{
 			if(adjacencyMatrix[i][j] > 0)
 			{
-				connectedIndeces.push(j);
-			}
-		}
-		//console.log(i + ": " + connectedIndeces);
-		for(var k = 0; k < connectedIndeces.length; k++)
-		{
-			if(adjacencyMatrix[connectedIndeces[k]][i] == 0)
-			{
-				deadEndNodes.push(k);
+				if(adjacencyMatrix[j][i] == 0)
+				{
+					console.log(j + "->" + i + "is a dead end node");
+				}
 			}
 		}
 	}
-	// if(deadEndNodes.length > 0)
-	// {
-	// 	console.log("Dead end nodes found in adjacency matrix at rows...");
-	// 	console.log(deadEndNodes);
-	// }
-	// else
-	// {
-	// 	console.log("No dead end nodes found in adjacency matrix");
-	// }	
 }
 
 function TestAdjacencyMatrixForSingleConnectedNodes()
 {
-	//console.log("Testing adjacency matrix for single connected nodes...");
+	console.log("Testing adjacency matrix for single connected nodes...");
 	var singleConnectedRows = [];
 	for(var i = 0; i < adjacencyMatrix.length; i++)
 	{
@@ -834,8 +819,10 @@ function TestAdjacencyMatrixForSingleConnectedNodes()
 			singleConnectedRows.push(i);
 
 			var closestNode = FindClosestNode(nodes[i]);
-			edge = {startNode: nodes[i], endNode: closestNode, linePoints: [nodes[i].latlng, closestNode.latlng]};
+			edge = {startNode: nodes[i], endNode: closestNode, linePoints: [nodes[i].latlng, closestNode.latlng], polyLine: null};
+			reverseEdge = {startNode: closestNode, endNode: nodes[i], linePoints: [closestNode.latlng, nodes[i].latlng], polyLine: null};
 			edges.push(edge);
+			edges.push(reverseEdge);
 			
 		}
 	}
