@@ -68,40 +68,63 @@ class GraphDiam2h(nx.DiGraph):
         self.all_pairs_sp, self.all_sp_len = \
             GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
 
-        # For every node v in graph, denote the distance to v from some other
-        # node w in graph. See page 31 for definition of Ball.
-        self.all_v_neighbor_dists = [
+        # Contains the length of shortest path from every other node to this
+        # node. This is the equivalent of a transpose on the self.all_sp_len
+        # "matrix."
+        self.all_sp_len_transpose = [
             array('f', [0.0] * self.num_nodes) for _ in range(self.num_nodes)
         ]
-        # This is the equivalent of a transpose on the self.all_sp_len
-        # "matrix."
         for i in range(self.num_nodes):
             for j in range(self.num_nodes):
                 # Get shortest path length from the other node to this node.
-                self.all_v_neighbor_dists[i][j] = self.all_sp_len[j][i]
+                self.all_sp_len_transpose[i][j] = self.all_sp_len[j][i]
+
 
         # Removing any floating point imprecision with round. This has been
         # constructed to be a power of 2, see Lemma 3.1 for more details.
         self.diam = round(self._max_sp())
 
     def _max_sp(self):
+        # return max(self.all_sp_len)
         return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
         return self.all_pairs_sp[(s, t)]
 
     def get_shortest_path_length(self, s, t: int) -> float:
-        return self.all_sp_len[s][t]
+        # return self.all_sp_len[s][t]
+        return self.all_sp_len[(s * self.num_nodes) + t]
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
-        """Return all nodes t in graph which have distance <= r from t -> s."""
-        return frozenset(
+        """Return all nodes t in graph which have distance <= r from s -> t."""
+        s_nbhd = frozenset(
+            sp.filter_out_above(self.num_nodes, self.all_sp_len[s], r)
+        )
+
+        # Get all nodes with shortest path *to* s less than or equal to r.
+        s_nbhd_inverse = frozenset(
             sp.filter_out_above(
-                len(self.all_v_neighbor_dists[s]),
-                self.all_v_neighbor_dists[s],
+                self.num_nodes,
+                self.all_sp_len_transpose[s],
                 r
             )
         )
+
+        # Work around for algorithm intended for undirected graphs. When
+        # generating an HDS, there is the possibility that the randomized
+        # HDS generator algorithm chooses vertices which are reachable by
+        # s and path length less than or equal to r, but the chosen vertices
+        # would not be able to get to s in less than or equal to r path length.
+        # This is due to the topology of the graph, where there are nodes
+        # which have edges going to other nodes but not an edge coming back
+        # from one of those nodes, thus no longer looking like an undirected
+        # graph (since there's no way back with equal path length).
+        #
+        # The r_neighborhood now instead only chooses those vertices which
+        # s can reach in <= r but *also* those edges should be able to reach
+        # s in <= r path length.
+        return s_nbhd & s_nbhd_inverse
+        # return s_nbhd
 
 
 class GraphUtils:
@@ -159,7 +182,7 @@ class GraphUtils:
         num_nodes = len(G.nodes())
 
         all_pairs_sp = {}
-        all_sp_lens = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
+        all_sp_len = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
 
         for s in all_pairs:
             for t in all_pairs[s]:
@@ -170,9 +193,9 @@ class GraphUtils:
                     prev = v
 
                 all_pairs_sp[(s, t)] = all_pairs[s][t]
-                all_sp_lens[s][t] = length
+                all_sp_len[s][t] = length
 
-        return all_pairs_sp, all_sp_lens
+        return all_pairs_sp, all_sp_len
 
     @staticmethod
     def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
@@ -435,7 +458,14 @@ class GraphUtils:
                         tree = hdt
                         break
 
-                # s and/or t are not alpha-padded in any of the generated HDS's
+                # if tree is None:
+                #     import test
+                #     for (hds, _) in HDST_list:
+                #         test.Test.verify_valid_hds(G, hds)
+                #     print("all good")
+
+                # s and t are not simultaenously alpha-padded in any of the
+                # generated HDS's
                 assert(tree is not None)
 
                 s_node = HDT_Node(frozenset([s]), 0)
@@ -455,24 +485,26 @@ class GraphUtils:
         One of those two nodes represents an "in" node and the other an "out"
         node. The "in" node retains all incoming edges from the original node,
         with one outgoing edge into the new "out" node. The "out" node retains
-        all outgoing edges from the original node. The directed edge from "in"
-        to "out" node is given a new weight (random or specified), while all
-        original edges retain their original weight.
+        all outgoing edges from the original node.
+
+        The directed edge from "in" to "out" node is given a new weight
+        (random or specified), while all original edges retain their original
+        weight.
         """
         if M.shape[0] != M.shape[1]:
             raise NonSquareMatrix
 
         i, j = M.shape[0], M.shape[1]
-        new_i, new_j = i*2, j*2
-        new_matrix = np.zeros((new_i, new_j), dtype=np.float64)
+        double_i, double_j = i*2, j*2
+        new_matrix = np.zeros((double_i, double_j), dtype=np.float64)
 
         # Copying old matrix M into bottom left of the new matrix
-        new_matrix[i:new_i, 0:j] = M
+        new_matrix[i:double_i, 0:j] = M
 
         # Diagonal of top right square corresponds to the edge weight from
         # in to out vertices
         np.fill_diagonal(
-            new_matrix[0:new_i, j:new_j],
+            new_matrix[0:double_i, j:double_j],
             new_weight
         )
 
