@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import speed as sp
 
 from math import ceil, log2
 from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
@@ -62,36 +63,75 @@ class GraphDiam2h(nx.DiGraph):
         self._mat = GraphUtils.create_pow2_diameter_mat(M)
 
         super(GraphDiam2h, self).__init__(self._mat)
+        self.num_nodes = len(self.nodes())
 
         self.all_pairs_sp, self.all_sp_len = \
             GraphUtils.all_pairs_dijkstra_shortest_path_and_length(self)
 
+        # Contains the length of shortest path from every other node to this
+        # node. This is the equivalent of a transpose on the self.all_sp_len
+        # "matrix."
+        self.all_sp_len_transpose = [
+            array('f', [0.0] * self.num_nodes) for _ in range(self.num_nodes)
+        ]
+        for i in range(self.num_nodes):
+            for j in range(self.num_nodes):
+                # Get shortest path length from the other node to this node.
+                self.all_sp_len_transpose[i][j] = self.all_sp_len[j][i]
+
+
         # Removing any floating point imprecision with round. This has been
         # constructed to be a power of 2, see Lemma 3.1 for more details.
         self.diam = round(self._max_sp())
-        self.num_nodes = len(self.nodes())
 
     def _max_sp(self):
-        return max(
-            [max(dists) for dists in self.all_sp_len]
-        )
+        # return max(self.all_sp_len)
+        return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
         return self.all_pairs_sp[(s, t)]
 
     def get_shortest_path_length(self, s, t: int) -> float:
-        return self.all_sp_len[s][t]
+        # return self.all_sp_len[s][t]
+        return self.all_sp_len[(s * self.num_nodes) + t]
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
-        return frozenset(
-            [v for v in range(self.num_nodes) if self.all_sp_len[s][v] <= r]
+        """Return all nodes t in graph which have distance <= r from s -> t."""
+        s_nbhd = frozenset(
+            sp.filter_out_above(self.num_nodes, self.all_sp_len[s], r)
         )
+
+        # Get all nodes with shortest path *to* s less than or equal to r.
+        s_nbhd_inverse = frozenset(
+            sp.filter_out_above(
+                self.num_nodes,
+                self.all_sp_len_transpose[s],
+                r
+            )
+        )
+
+        # Work around for algorithm intended for undirected graphs. When
+        # generating an HDS, there is the possibility that the randomized
+        # HDS generator algorithm chooses vertices which are reachable by
+        # s and path length less than or equal to r, but the chosen vertices
+        # would not be able to get to s in less than or equal to r path length.
+        # This is due to the topology of the graph, where there are nodes
+        # which have edges going to other nodes but not an edge coming back
+        # from one of those nodes, thus no longer looking like an undirected
+        # graph (since there's no way back with equal path length).
+        #
+        # The r_neighborhood now instead only chooses those vertices which
+        # s can reach in <= r but *also* those edges should be able to reach
+        # s in <= r path length.
+        return s_nbhd & s_nbhd_inverse
+        # return s_nbhd
 
 
 class GraphUtils:
     @staticmethod
     def graph_diameter(G):
         """Compute the diameter of a given graph.
+
         NOTE:
             Given graph MUST be STRONGLY connected.
         """
@@ -100,24 +140,16 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
-    def r_neighborhood(G, v: int, r: float) -> FrozenSet[int]:
-        """Get the set of vertices that are within r distance of v.
-        """
-        try:
-            nbhd = nx.single_source_dijkstra_path_length(G, v, cutoff=r)
-        except KeyError:
-            raise VertexNonExistent
-
-        return frozenset(nbhd.keys())
-
-    @staticmethod
     def create_pow2_diameter_mat(np_mat):
         """Out of an adjacency matrix which denotes some graph G = (V, E, w)
         create an adjacency matrix which denotes some graph G' = (V, E, w_c)
         with diameter equal to some power of 2.
+
         See Lemma 3.1 for more details.
+
         NOTE:
             The given adjacency matrix MUST denote a STRONGLY connected graph.
+
         """
         # Negative weights delimit a non-existent edge between two nodes, which
         # is equivalent to edge weight of infinity. 0.0 will be used to
@@ -150,7 +182,7 @@ class GraphUtils:
         num_nodes = len(G.nodes())
 
         all_pairs_sp = {}
-        all_sp_lens = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
+        all_sp_len = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
 
         for s in all_pairs:
             for t in all_pairs[s]:
@@ -161,9 +193,9 @@ class GraphUtils:
                     prev = v
 
                 all_pairs_sp[(s, t)] = all_pairs[s][t]
-                all_sp_lens[s][t] = length
+                all_sp_len[s][t] = length
 
-        return all_pairs_sp, all_sp_lens
+        return all_pairs_sp, all_sp_len
 
     @staticmethod
     def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
@@ -196,7 +228,6 @@ class GraphUtils:
         V = frozenset(np.arange(num_vertices))
 
         if not pi:
-            # @TODO: check that this is a uniform permutation
             pi = np.random.permutation(num_vertices)
         # print("Random permutation: {}".format(pi))
 
@@ -215,40 +246,43 @@ class GraphUtils:
 
         for i in reversed(range(h)):
             H_i = set()
-            r = U * 2**(i-1)
+            r = U * (2**(i-1))
             memoized_nbhds = {}  # type: Dict[Tuple[int, int], List[int]]
 
-            for C in H[i+1]:
-                cluster_set = C
-                for v in cluster_set:
+            for cluster in H[i+1]:
+                for v in cluster:
                     v_ver = vertex_dict[v]
+
                     v_ver.cluster = set()
                     v_ver.flag = True
-
                     v_ver.rep = None
-                    for j in pi:
-                        if (v, i) not in memoized_nbhds:
-                            v_nbhd = G.r_neighborhood(v, r)
-                            memoized_nbhds[(v, i)] = v_nbhd
-                        else:
-                            v_nbhd = memoized_nbhds[(v, i)]
 
-                        if j in cluster_set and j in v_nbhd:
+                    if (v, i) not in memoized_nbhds:
+                        v_nbhd = G.r_neighborhood(v, r)
+                        memoized_nbhds[(v, i)] = v_nbhd
+                    else:
+                        v_nbhd = memoized_nbhds[(v, i)]
+
+                    # Get first vertex in random permutation that is both
+                    # in cluster and in the r_neighborhood of v. Set this
+                    # vertex as the representative of v.
+                    for j in pi:
+                        if j in cluster and j in v_nbhd:
                             v_ver.rep = j
                             break
 
-                    # Something is wrong if this triggers
+                    # Could not find a representative. Something is wrong.
                     assert(v_ver.rep is not None)
 
-                for v in cluster_set:
+                for v in cluster:
                     v_ver = vertex_dict[v]
-                    for u in cluster_set:
+                    for u in cluster:
                         u_ver = vertex_dict[u]
                         if u_ver.flag and u_ver.rep == v:
                             u_ver.flag = False
                             v_ver.cluster.add(u)
 
-                for v in cluster_set:
+                for v in cluster:
                     v_ver = vertex_dict[v]
                     if v_ver.cluster:
                         H_i.add(frozenset(v_ver.cluster))
@@ -300,6 +334,7 @@ class GraphUtils:
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
         """Merge two paths that have overlapping vertices.
+
         path1: [v_1, v_2, ... , v_k]
                                 ||
         path2:                 [v_k, v_k+1, ...]
@@ -330,17 +365,17 @@ class GraphUtils:
         return GraphUtils.compress_path(projection_path)
 
     @staticmethod
-    def check_alpha_padded(G, hds: HDS, alpha: float, v: int) -> bool:
+    def check_alpha_padded(
+            G, hds: HDS, alpha: float, v: int, debug=False) -> bool:
+        def _is_subset_of_a_cluster(nbhd, d_partition):
+            for cluster in d_partition:
+                if nbhd <= cluster: return True
+            return False
+
         for i, delta_partition in enumerate(hds):
-            v_nbhd = G.r_neighborhood(v, alpha * (2 ** i))
-            is_subset = False
-
-            for cluster in delta_partition:
-                if v_nbhd <= cluster:
-                    is_subset = True
-                    break
-
-            if not is_subset:
+            v_nbhd = G.r_neighborhood(v, alpha * (2**i))
+            if not _is_subset_of_a_cluster(v_nbhd, delta_partition):
+                if debug: print(i)
                 return False
 
         return True
@@ -394,8 +429,8 @@ class GraphUtils:
             raise NonPowerOf2Graph("{}".format(G.diam))
 
         V = set(G.nodes())
-        num_iterations = const * int(log2(len(G.nodes())))
 
+        num_iterations = const * int(log2(len(V)))
         HDST_list = [None] * num_iterations
         for i in range(num_iterations):
             hds = GraphUtils.randomized_HDS_gen(G)
@@ -403,38 +438,45 @@ class GraphUtils:
 
             HDST_list[i] = (hds, hdt)
 
-        S = {}  # type: Dict[Tuple[int, int], List[int]]
         alpha = min((1 / log2(len(V))), 1/8)
+        alpha_padded = {}
+        for node in V:
+            alpha_padded[node] = [False] * num_iterations
+            for i, (hds, _) in enumerate(HDST_list):
+                alpha_padded[node][i] = \
+                    GraphUtils.check_alpha_padded(G, hds, alpha, node)
+
+        scheme = {}  # type: Dict[Tuple[int, int], List[int]]
 
         for s in V:
             for t in V - {s}:
                 tree = None
 
                 for i in range(num_iterations):
-                    hds, hdt = HDST_list[i]
-
-                    s_alpha_padded = \
-                        GraphUtils.check_alpha_padded(G, hds, alpha, s)
-                    t_alpha_padded = \
-                        GraphUtils.check_alpha_padded(G, hds, alpha, t)
-
-                    if s_alpha_padded and t_alpha_padded:
-                        tree = hdt
+                    if alpha_padded[s][i] and alpha_padded[t][i]:
+                        tree = HDST_list[i][1]
                         break
 
-                # s and/or t are not alpha-padded in any of the generated HDS's
+                # if tree is None:
+                #     import test
+                #     for (hds, _) in HDST_list:
+                #         test.Test.verify_valid_hds(G, hds)
+                #     print("all good")
+
+                # s and t are not simultaenously alpha-padded in any of the
+                # generated HDS's
                 assert(tree is not None)
 
                 s_node = HDT_Node(frozenset([s]), 0)
                 t_node = HDT_Node(frozenset([t]), 0)
 
                 path = GraphUtils.HDT_leaf_to_leaf_path(tree, s_node, t_node)
-                S[(s, t)] = GraphUtils.projection(G, path)
+                scheme[(s, t)] = GraphUtils.projection(G, path)
 
         for v in V:
-            S[(v, v)] = [v]
+            scheme[(v, v)] = [v]
 
-        return S
+        return scheme
 
     @staticmethod
     def create_in_out_mat(M, new_weight=np.float64(1)):
@@ -442,24 +484,26 @@ class GraphUtils:
         One of those two nodes represents an "in" node and the other an "out"
         node. The "in" node retains all incoming edges from the original node,
         with one outgoing edge into the new "out" node. The "out" node retains
-        all outgoing edges from the original node. The directed edge from "in"
-        to "out" node is given a new weight (random or specified), while all
-        original edges retain their original weight.
+        all outgoing edges from the original node.
+
+        The directed edge from "in" to "out" node is given a new weight
+        (random or specified), while all original edges retain their original
+        weight.
         """
         if M.shape[0] != M.shape[1]:
             raise NonSquareMatrix
 
         i, j = M.shape[0], M.shape[1]
-        new_i, new_j = i*2, j*2
-        new_matrix = np.zeros((new_i, new_j), dtype=np.float64)
+        double_i, double_j = i*2, j*2
+        new_matrix = np.zeros((double_i, double_j), dtype=np.float64)
 
         # Copying old matrix M into bottom left of the new matrix
-        new_matrix[i:new_i, 0:j] = M
+        new_matrix[i:double_i, 0:j] = M
 
         # Diagonal of top right square corresponds to the edge weight from
         # in to out vertices
         np.fill_diagonal(
-            new_matrix[0:new_i, j:new_j],
+            new_matrix[0:double_i, j:double_j],
             new_weight
         )
 

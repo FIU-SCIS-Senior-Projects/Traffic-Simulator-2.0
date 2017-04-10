@@ -58,7 +58,7 @@ def initialize_graph():
     return jsonify()
 
 @app.route('/initialize_graph_dev', methods=['POST'])
-@limiter.limit("1000 per second")
+# @limiter.limit("1000 per second")
 def initialize_graph_dev():
     # if __check_preflight() is True:
     #     return __response("Preflight request. Not processed.", 200)
@@ -107,7 +107,7 @@ def init_graph_unity():
 
 @app.route('/get_path', methods=['POST'])
 @limiter.limit(__get_request_key)
-@limiter.limit("100 per second")
+# @limiter.limit("100 per second")
 def get_path():
     __authorize()
 
@@ -128,7 +128,7 @@ def get_path():
     return jsonify(map=path)
 
 @app.route('/get_path_dev', methods=['POST'])
-@limiter.limit("100000 per second")
+# @limiter.limit("100000 per second")
 def get_path_dev():
 
     json_data = request.get_json(force=True)
