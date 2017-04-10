@@ -9,12 +9,17 @@ import routing
 import json
 import traceback
 
+#Instantiate Flask app
 app = Flask(__name__)
+#Setting up app to use CORS
 CORS(app)
+#Setting up App to use Limiter for limiting usage. Key Function maps IP address if none is provided
 limiter = Limiter(app, key_func = get_remote_address)
+
+#Creating Routing object.
 router = routing.Routing()
 
-
+#Logging method
 log_file = 'log_file.txt'
 def log_messages(messages):
     with open(log_file, 'w') as lfile:
@@ -24,7 +29,7 @@ def log_messages(messages):
 
         lfile.write('==========================================\n')
 
-
+#Function that maps the API callers key to the database to check usage and Limit based on customer type.
 def __get_request_key():
     if __check_preflight() is True:
         return get_remote_address()
@@ -34,9 +39,10 @@ def __get_request_key():
     except Exception as e:
         abort(__response("api_key header not found. Please provide this header to access api.", 400))
 
+#Endpoint to initiate graph, taking in raw JSON of "map":[[<float>]] and "algos":<int>
 @app.route('/initialize_graph', methods=['POST'])
 @limiter.limit(__get_request_key)
-@limiter.limit("1 per second")
+@limiter.limit("20 per minute")
 def initialize_graph():
     # if __check_preflight() is True:
     #     return __response("Preflight request. Not processed.", 200)
@@ -57,6 +63,7 @@ def initialize_graph():
 
     return jsonify()
 
+#Functionally the same as initiate_graph endpoint, but fewer limitations and no authorization check.
 @app.route('/initialize_graph_dev', methods=['POST'])
 @limiter.limit("1000 per second")
 def initialize_graph_dev():
@@ -77,6 +84,8 @@ def initialize_graph_dev():
 
     return jsonify()
 
+#Initialize graph endpoint for Unity engine formatted json of form
+#"map":["Row":<float>], "algos":<int>
 @app.route('/init_graph_unity', methods=['POST'])
 # @limiter.limit(__get_request_key)
 @limiter.limit("1000 per second")
@@ -104,7 +113,8 @@ def init_graph_unity():
 
     return "The graph was initialized: {}.".format(success)
 
-
+#Endpoint to get a path taking in JSON in the form of:
+#"algorithm:<int>, "source":<int>, "target":<int>
 @app.route('/get_path', methods=['POST'])
 @limiter.limit(__get_request_key)
 @limiter.limit("100 per second")
@@ -127,6 +137,7 @@ def get_path():
 
     return jsonify(map=path)
 
+#Same as get path, but no authorization headers required and nearly unreachable limit.
 @app.route('/get_path_dev', methods=['POST'])
 @limiter.limit("100000 per second")
 def get_path_dev():
@@ -147,7 +158,8 @@ def get_path_dev():
 
     return jsonify(map=path)
 
-
+#Function to authorize a user requiring 2 http request headers:
+#'api_id' and 'api_key' which are UUIDs that were generaed by Python's UUID4() function.
 def __authorize():
     try:
         api_identity = request.headers['api_id']
@@ -159,6 +171,7 @@ def __authorize():
     except KeyError as e:
         return __response(jsonify(reason_401="api_id header and/or api_key header not found. Please provide these headers to access this endpoint."), 401)
 
+#Checks to see if the passed in headers are found in the database.
 def __isAuthorized(api_id, api_key):
 
     with open('user_data.json') as data_file:
@@ -170,9 +183,11 @@ def __isAuthorized(api_id, api_key):
             is_valid = True
     return is_valid
 
+#Function to make an html response with a given body and status code. Will include extra header to allow CORS to function for javascript web app.
 def __response(body, status_code):
     return make_response(body, status_code, {"Access-Control-Allow-Origin": "*"})
 
+#Function to determine if the current call is part of a CORS preflight request. This request should be ignored.
 def __check_preflight():
     try:
         if request.headers['Access-Control-Request-Headers'] is not None:
@@ -180,6 +195,6 @@ def __check_preflight():
     except Exception as e:
         return False
 
-
+#Start Script.
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
