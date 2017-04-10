@@ -78,8 +78,8 @@ def initialize_graph_dev():
     return jsonify()
 
 @app.route('/init_graph_unity', methods=['POST'])
-@limiter.limit(__get_request_key)
-@limiter.limit("1 per minute")
+# @limiter.limit(__get_request_key)
+@limiter.limit("1000 per second")
 def init_graph_unity():
     __authorize()
 
