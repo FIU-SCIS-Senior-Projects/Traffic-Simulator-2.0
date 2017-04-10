@@ -1,20 +1,58 @@
 <html>
 
-<head>
+	<head>
 
-  <title>A Leaflet Map Traffic Simulation</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+		<title>A Leaflet Map Traffic Simulation</title>
 
-</head>
+		<!-- Leaflet -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+		<script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
 
-<body>
+		<!-- Leaflet Easy Button -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet-easybutton@2.0.0/src/easy-button.css">
+		<script src="https://unpkg.com/leaflet-easybutton@2.0.0/src/easy-button.js"></script>
+		
+		<!-- removes favicon.ico 404 error...remove in production -->
+		<link rel="shortcut icon" href="">
 
-  <div id="map"></div>
+		<!-- Map Quest Traffic API Leaflet Plugin -->
+		<script src="https://www.mapquestapi.com/sdk/leaflet/v2.2/mq-map.js?key=W5A9kN9FpIpMOEeB1SdM6wd7pBNtVoBQ"></script>
+		<script src="https://www.mapquestapi.com/sdk/leaflet/v2.2/mq-traffic.js?key=W5A9kN9FpIpMOEeB1SdM6wd7pBNtVoBQ"></script>
 
-  <script src="trafficmap.js"></script>
+		<!-- Map Key Icons -->
+		<script src="mapkey-icons/L.Icon.Mapkey.js"></script>
+		<link rel="stylesheet" href="mapkey-icons/MapkeyIcons.css" />
 
-</body>
+
+		<!-- JQuery! -->
+		<script
+		src="https://code.jquery.com/jquery-3.1.1.min.js"
+		integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+		crossorigin="anonymous"></script>
+
+		<!-- Font Awsome-->
+		<script src="https://use.fontawesome.com/a8b0ceb0d1.js"></script>
+
+		<!-- My Styles -->
+		<link rel="stylesheet" href="style.css" />
+
+	</head>
+
+	<body>
+
+		<div id="map"></div>
+		<div id="dropZone"></div>
+
+		<!-- Animated Marker -->
+		<script  type="text/javascript" src="AnimatedMarker.js"></script>
+
+		<!-- My Scripts -->
+		<script  type="text/javascript" src="mathutil.js"></script>
+		<script  type="text/javascript" src="arrayutil.js"></script>
+		<script  type="text/javascript" src="coroutine.js"></script>
+		<script  type="text/javascript" src="dropzone.js"></script>
+		<script  type="text/javascript" src="trafficmap.js"></script>
+
+	</body>
 
 </html>
