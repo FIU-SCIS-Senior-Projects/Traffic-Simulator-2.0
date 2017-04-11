@@ -85,14 +85,12 @@ class GraphDiam2h(nx.DiGraph):
         self.diam = round(self._max_sp())
 
     def _max_sp(self):
-        # return max(self.all_sp_len)
         return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
         return self.all_pairs_sp[(s, t)]
 
     def get_shortest_path_length(self, s, t: int) -> float:
-        # return self.all_sp_len[s][t]
         return self.all_sp_len[(s * self.num_nodes) + t]
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
@@ -113,7 +111,7 @@ class GraphDiam2h(nx.DiGraph):
         # Work around for algorithm intended for undirected graphs. When
         # generating an HDS, there is the possibility that the randomized
         # HDS generator algorithm chooses vertices which are reachable by
-        # s and path length less than or equal to r, but the chosen vertices
+        # s with path length less than or equal to r, but the chosen vertices
         # would not be able to get to s in less than or equal to r path length.
         # This is due to the topology of the graph, where there are nodes
         # which have edges going to other nodes but not an edge coming back
@@ -121,7 +119,7 @@ class GraphDiam2h(nx.DiGraph):
         # graph (since there's no way back with equal path length).
         #
         # The r_neighborhood now instead only chooses those vertices which
-        # s can reach in <= r but *also* those edges should be able to reach
+        # s can reach in <= r but *only if* those edges can also reach
         # s in <= r path length.
         return s_nbhd & s_nbhd_inverse
         # return s_nbhd
