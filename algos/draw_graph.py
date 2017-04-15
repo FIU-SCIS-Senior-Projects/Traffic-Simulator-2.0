@@ -1,4 +1,3 @@
-import graphviz
 import pydot
 
 
@@ -25,7 +24,7 @@ def generate_pydot_grid(G, spread=2, size=(10, 10)):
             str(n1),
             str(n2),
             headlabel='{:.2f}'.format(w['weight']),
-            labeldistance=3,
+            labeldistance=3.5,
         )
 
         pydot_graph.add_edge(e)
@@ -33,7 +32,11 @@ def generate_pydot_grid(G, spread=2, size=(10, 10)):
     return pydot_graph
 
 
-def highlight_path(dot, path, hl_color='blue', node_font_color='white'):
+def highlight_path(
+        dot, path,
+        node_fill_color='gray',
+        node_font_color='black',
+        edge_color='black'):
     path_dict = {}
     path_node_labels = ['"{}"'.format(n) for n in path]
     for i in range(1, len(path_node_labels)):
@@ -43,18 +46,16 @@ def highlight_path(dot, path, hl_color='blue', node_font_color='white'):
 
     for n in dot.get_node_list():
         if n.get_name() in path_node_labels:
-            n.set_fillcolor(hl_color)
             n.set_style('filled')
+            n.set_fillcolor(node_fill_color)
             n.set_fontcolor(node_font_color)
 
     for e in dot.get_edge_list():
         source = e.get_source()
         dest = e.get_destination()
         if source in path_dict and path_dict[source] == dest:
-            e.set_color(hl_color)
-            # TODO: not working
-            e.set_labelfontcolor(hl_color)
-            e.set_style('bold')
+            e.set_style('"bold,dashed"')
+            e.set_color(edge_color)
 
 
 def draw_pydot(pydot_graph):
