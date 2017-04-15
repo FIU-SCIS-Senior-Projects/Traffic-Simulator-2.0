@@ -3,7 +3,7 @@
 //  1. Re-init map on file drop
 
 // Settings File
-var settingsFile = "settings.json"
+var settingsFile = "js/settings.json"
 
 // Sim
 var initGraphRoutine;
@@ -33,7 +33,7 @@ var minZ = 12;
 var startZ = minZ;
 
 // Data Settings
-var defaultGeoDataFileName = "big_map.geojson";
+var defaultGeoDataFileName = "js/data/big_map.geojson";
 var initGraphURL = "http://localhost:5000/initialize_graph_dev";
 var getPathURL = "http://localhost:5000/get_path_dev";
 

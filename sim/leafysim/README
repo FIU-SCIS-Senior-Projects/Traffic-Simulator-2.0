@@ -1,0 +1,84 @@
+Leafy Sim
+
+This is a traffic simulator made using Leaflet(http://leafletjs.com/), Mapquest API(https://developer.mapquest.com/documentation/), and a Custom Routing API (http://trafficsimulator.com).
+
+It uses geo json feature data to map streets, create a matrix, and get paths from the router.  It then creates and simulates vehicles along those paths, provides statistics on the performance of the algorithm, and visualizes the paths being returned on the map.
+
+The purpose of this simulator is to help visualize and test routing algorithms for drivers and autonomous vehicles.  Since it is difficult to see the results of an algorithm in the real world, this simulator can be used to help both developers and nontechnical users see the performance of a applying particular routing algorithm to a high volume of traffic on a particular set of streets.
+
+Getting Started
+
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+
+Prerequisites
+
+- a local server (wamp, xamp, mamp, or other)
+- a routing api
+	(https://github.com/FIU-SCIS-Senior-Projects/Traffic-Simulator-1.0)
+	for instructions on installing and running the routing api on the local host please refer to the readme for that module on github 
+
+Installing
+
+A step by step series of examples that tell you have to get a development env running
+
+Download the files
+
+- either download the zip or fork the repo
+
+	ex. (https://github.com/FIU-SCIS-Senior-Projects/Traffic-Simulator-1.0)
+
+- run your local server on your desired port
+
+	ex. type "python -m SimpleHTTPServer" in your cmd line (if osx or linux)
+
+- navigate to http://127.0.0.1:port/ in your browser
+
+	ex. http://127.0.0.1:8000/
+
+- to run the simulation, if using the custom routing api then simply run the flask server and then click the run button (looks like a play button) in the browser.
+
+	note: using a different routing api is not currently supported and is not recomended.
+
+Running the tests
+
+Explain how to run the automated tests for this system
+
+Break down into end to end tests
+
+Explain what these tests test and why
+
+Give an example
+And coding style tests
+
+Explain what these tests test and why
+
+Give an example
+Deployment
+
+Add additional notes about how to deploy this on a live system
+
+Built With
+
+Mapquest API - a service to retrieve the map tiles
+Leaflet API - an API to build interactive map applications in javascript
+
+Contributing
+
+Please read CONTRIBUTING.md for details on our code of conduct, and the process for submitting pull requests to us.
+
+Versioning
+
+// TO DO
+
+Authors
+
+Max Leone - Initial work - Traffic Simulator 1.0
+See also the list of contributors who participated in this project.
+
+License
+
+// TO DO
+
+Acknowledgments
+
+Special thanks to OpenPlans for providing a great leaflet plugin for animated markers (https://github.com/openplans/Leaflet.AnimatedMarker) and mapkey-icons for providing...icons :)

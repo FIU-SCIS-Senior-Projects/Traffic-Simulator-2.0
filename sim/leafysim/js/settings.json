@@ -7,7 +7,7 @@ var settings =
 	"maxZ": 25,
 	"minZ": 12,
 	"startZ": 12,
-	"defaultGeoDataFileName": "big_map.geojson",
+	"defaultGeoDataFileName": "js/data/big_map.geojson",
 	"initGraphURL": "http://localhost:5000/initialize_graph_dev",
 	"getPathURL": "http://localhost:5000/get_path_dev",
 	"simStop": true,
