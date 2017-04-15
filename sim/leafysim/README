@@ -25,37 +25,28 @@ Download the files
 
 - either download the zip or fork the repo
 
-	ex. (https://github.com/FIU-SCIS-Senior-Projects/Traffic-Simulator-1.0)
+	GOTO: (https://github.com/FIU-SCIS-Senior-Projects/Traffic-Simulator-1.0)
 
 - run your local server on your desired port
 
-	ex. type "python -m SimpleHTTPServer" in your cmd line (if osx or linux)
+	Ex. Type "python -m SimpleHTTPServer" in your cmd line (if osx or linux)
 
 - navigate to http://127.0.0.1:port/ in your browser
 
-	ex. http://127.0.0.1:8000/
+	Ex. http://127.0.0.1:8000/
 
-- to run the simulation, if using the custom routing api then simply run the flask server and then click the run button (looks like a play button) in the browser.
+- to run the simulation, if using the custom routing api then simply run the flask server (see ../../api) and then click the run button (looks like a play button) in the browser.
 
-	note: using a different routing api is not currently supported and is not recomended.
+	Note: Using a different routing api is not currently supported and is not recomended.
 
-Running the tests
+- to change settings there is a json file (js/settings.json) that stores settings for the map, data, and simulation.  Please read trafficmap.js, specifically the InitSettings() function before attempting to change any settings.  
 
-Explain how to run the automated tests for this system
+	Ex. Changing the algosToInit setting to [0,1] will init the graph for both algos in the routing API.  
 
-Break down into end to end tests
+- to use a different geojson file than the default simply drag a valid geojson file onto the map.  
+	
+	Note: Assumes the file contains geojson line feature data.  If the amount of data is too large the init graph call might not be successful.  (see ../../algos)
 
-Explain what these tests test and why
-
-Give an example
-And coding style tests
-
-Explain what these tests test and why
-
-Give an example
-Deployment
-
-Add additional notes about how to deploy this on a live system
 
 Built With
 

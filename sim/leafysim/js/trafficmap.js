@@ -11,6 +11,7 @@ var getPathRoutine;
 var checkInitGraphRoutine;
 var currentData;
 var initGraphStatus;
+var simStop = true;
 
 // Graph 
 var nodes = []
@@ -24,32 +25,28 @@ var polyLines = [];
 var circles = [];
 
 // Map Settings
-var centerLat = 25.7294483;
-var centerLon = -80.4076104;
-var boundsDeltaLon = 0.2;
-var boundsDeltaLat = 0.1;
-var maxZ = 25;
-var minZ = 12;
-var startZ = minZ;
+var centerLat = 25.7294483;	// The center latitude of the map
+var centerLon = -80.4076104; // The center longitude of the map
+var boundsDeltaLon = 0.2; // The latitude amount the map can be moved from the center
+var boundsDeltaLat = 0.1; // The longitude amount the map can be moved from the center
+var maxZ = 25; // The maximum zoom level
+var minZ = 12; // The minimum zoom level
+var startZ = minZ; // The starting zoom level
 
 // Data Settings
-var defaultGeoDataFileName = "js/data/big_map.geojson";
-var initGraphURL = "http://localhost:5000/initialize_graph_dev";
-var getPathURL = "http://localhost:5000/get_path_dev";
+var defaultGeoDataFileName = "js/data/big_map.geojson"; // The location of the geojson
+var initGraphURL = "http://localhost:5000/initialize_graph_dev"; // the url to init the graph from the router
+var getPathURL = "http://localhost:5000/get_path_dev"; // the url to get a path from the router
 
 // Sim Settings
-var simStop = true;
-var simNumActiveVehicles = 0;
-var displayPolyLines = false;
-var routingAlgoCode = 0;
-var algosToInit = [0];
-var routingStartIndeces = 0;
-var routingEndIndeces = 0;
-var vehicleSpawnRate = 3000;
-var vehicleSpawnCount = 10;
-var vehicleMoveDistance = 500;
-var vehicleMoveInterval = 500;
-var updateGraphRate = 30000;
+var displayPolyLines = false; // The default setting to show/hide the polylines
+var routingAlgoCode = 0; // The algorithm to use to get paths
+var algosToInit = [0]; // The algorithms to be initialized
+var vehicleSpawnRate = 3000; // The rate at which vehicles are spawned (ms)
+var vehicleSpawnCount = 10; // The num of vehicles spawned at a time
+var vehicleMoveDistance = 500; // The distance vehicles travel each interval
+var vehicleMoveInterval = 500; // The interval in which vehicles move
+var updateGraphRate = 30000; // The rate at which the graph will be updated
 
 // Start
 InitSettings(settingsFile);
@@ -100,26 +97,16 @@ function ProcessSettingsData(data)
 	this.defaultGeoDataFileName = data.defaultGeoDataFileName;
 	this.initGraphURL = data.initGraphURL;
 	this.getPathURL = data.getPathURL;
-	this.currentData = data.currentData;
 
 	// Sim Properties
-	this.simStop = data.simStop;
-	this.simNumActiveVehicles = data.simNumActiveVehicles;
 	this.displayPolyLines = data.displayPolyLines;
 	this.routingAlgoCode = data.routingAlgoCode;
 	this.algosToInit = data.algosToInit;
-	this.routingStartIndeces = data.routingStartIndeces;
-	this.routingEndIndeces = data.routingEndIndeces;
 	this.vehicleSpawnRate = data.vehicleSpawnRate;
 	this.vehicleSpawnCount = data.vehicleSpawnCount;
 	this.vehicleMoveDistance = data.vehicleMoveDistance;
 	this.vehicleMoveInterval = data.vehicleMoveInterval;
 	this.updateGraphRate = data.updateGraphRate;
-
-	// Sim Routines
-	this.initGraphRoutine = data.initGraphRoutine;
-	this.getPathRoutine = data.getPathRoutine;
-	this.checkInitGraphRoutine = data.checkInitGraphRoutine;
 
 	// Map Properties (these are defaults, real values will come from the data files)
 	this.centerLat = data.centerLat;
@@ -497,9 +484,25 @@ function* SimulatePaths()
 	{
 		for(var i = 0; i < vehicleSpawnCount; i++)
 		{
-			routingStartIndeces = RandomIntRange(0,5);
-			routingEndIndeces = RandomIntRange(adjacencyMatrix.length-6,adjacencyMatrix.length-1);
-			var jsonObj = {"algorithm": routingAlgoCode, "source": routingStartIndeces, "target": routingEndIndeces};
+			var routingStartIndex;
+			var routingEndIndex;
+			if((i % 2) == 0)
+			{
+				routingStartIndex = RandomIntRange(0,5);
+				routingEndIndex = RandomIntRange(adjacencyMatrix.length-6,adjacencyMatrix.length-1);
+			}
+			else
+			{
+				routingStartIndex = RandomIntRange(adjacencyMatrix.length-6,adjacencyMatrix.length-1);
+				routingEndIndex = RandomIntRange(0,5);
+			}
+
+			var jsonObj = 
+			{
+				"algorithm": routingAlgoCode, 
+				"source": routingStartIndex, 
+				"target": routingEndIndex
+			};
 			var getPathJson = JSON.stringify(jsonObj);
 			GetPath(getPathJson, SpawnVehicle);
 		}
