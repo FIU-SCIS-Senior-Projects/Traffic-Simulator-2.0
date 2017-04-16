@@ -14,7 +14,12 @@ class GridGen:
         grid = nx.DiGraph()
 
         for e1, e2 in G.edges():
-            weight = round(random.uniform(1, 2), 2)
+            # rand_num = 0.0
+            # while rand_num == 0.0:
+            #     rand_num = random.random()
+
+            rand_num = random.uniform(1, 2)
+            weight = round(rand_num, 2)
             grid.add_edge(e1, e2, weight=weight)
             grid.add_edge(e2, e1, weight=weight)
 
