@@ -25,18 +25,25 @@ class GridGen:
         """Generate an adj matrix where the rows and columns are sorted based
         on i > j for each node in grid with name (i, j)."""
         num_nodes = len(grid.nodes())
-        index_max = int(sqrt(num_nodes))
+        dimension_max = int(sqrt(num_nodes))
         mat = np.zeros((num_nodes, num_nodes))
 
-        nodes = product(range(index_max), range(index_max))
+        nodes = product(range(dimension_max), range(dimension_max))
         for n in nodes:
-            row_index = (n[0] * index_max) + n[1]
+            row_index = (n[0] * dimension_max) + n[1]
 
             for adj_node, w_dict in grid[n].items():
-                column_index = (adj_node[0] * index_max) + adj_node[1]
+                column_index = (adj_node[0] * dimension_max) + adj_node[1]
                 mat[row_index][column_index] = w_dict.get('weight', 0.0)
 
         return mat
+
+    @staticmethod
+    def generate_grid_diam2h(m, n):
+        grid = GridGen.generate_grid(m, n)
+        mat = GridGen.grid_adj_matrix(grid)
+
+        return routing.GraphDiam2h(mat)
 
 
 class Test:

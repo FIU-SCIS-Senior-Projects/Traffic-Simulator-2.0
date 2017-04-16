@@ -8,8 +8,8 @@ from itertools import product
 def generate_pydot_grid(mat, spread=2, size=(10, 10)):
     assert(mat.shape[0] == mat.shape[1])
 
-    index_max = int(sqrt(mat.shape[0]))
-    nodes = list(product(range(index_max), range(index_max)))
+    dimension_max = int(sqrt(mat.shape[0]))
+    nodes = list(product(range(dimension_max), range(dimension_max)))
 
     pydot_graph = pydot.Dot(
         graph_type='digraph',
@@ -40,9 +40,9 @@ def generate_pydot_grid(mat, spread=2, size=(10, 10)):
         indexer = regular_2d_index
 
     for n1 in nodes:
-        row_index = (n1[0] * index_max) + n1[1]
+        row_index = (n1[0] * dimension_max) + n1[1]
         for n2 in nodes:
-            column_index = (n2[0] * index_max) + n2[1]
+            column_index = (n2[0] * dimension_max) + n2[1]
 
             weight = indexer(mat, row_index, column_index)
             if weight > 0.0 and weight != np.inf:
@@ -64,7 +64,27 @@ def highlight_path(
         node_font_color='black',
         edge_color='black'):
     path_dict = {}
-    path_node_labels = ['"{}"'.format(n) for n in path]
+    path_node_labels = []
+
+    num_nodes = len(dot.get_node_list())
+    dimension_max = int(sqrt(num_nodes))
+
+    for n in path:
+        if isinstance(n, tuple):
+            path_node_labels.append('"{}"'.format(n))
+        elif isinstance(n, int) or isinstance(n, np.integer):
+            # Lets convert the integer into (x, y) tuple
+            node_tuple = (n // dimension_max, n % dimension_max)
+            path_node_labels.append('"{}"'.format(node_tuple))
+        elif isinstance(n, np.floating) and n.is_integer():
+            i = int(n)
+            node_tuple = (i // dimension_max, i % dimension_max)
+            path_node_labels.append('"{}"'.format(node_tuple))
+        else:
+            raise TypeError(
+                "Nodes are not (x, y) tuples or integers."
+            )
+
     for i in range(1, len(path_node_labels)):
         source = path_node_labels[i-1]
         dest = path_node_labels[i]
