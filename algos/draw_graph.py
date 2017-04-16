@@ -1,7 +1,16 @@
 import pydot
+import numpy as np
+
+from math import sqrt
+from itertools import product
 
 
-def generate_pydot_grid(G, spread=2, size=(10, 10)):
+def generate_pydot_grid(mat, spread=2, size=(10, 10)):
+    assert(mat.shape[0] == mat.shape[1])
+
+    index_max = int(sqrt(mat.shape[0]))
+    nodes = list(product(range(index_max), range(index_max)))
+
     pydot_graph = pydot.Dot(
         graph_type='digraph',
         size='{},{}!'.format(*size),
@@ -9,7 +18,7 @@ def generate_pydot_grid(G, spread=2, size=(10, 10)):
         # margin='1',
     )
 
-    for node in G.nodes():
+    for node in nodes:
         x, y = (coord * spread for coord in node)
         n = pydot.Node(
             name=str(node),
@@ -19,15 +28,32 @@ def generate_pydot_grid(G, spread=2, size=(10, 10)):
         )
         pydot_graph.add_node(n)
 
-    for n1, n2, w in G.edges(data=True):
-        e = pydot.Edge(
-            str(n1),
-            str(n2),
-            headlabel='{:.2f}'.format(w['weight']),
-            labeldistance=3.5,
-        )
+    def numpy_matrix_index(mat, i, j):
+        return mat[i,j]
 
-        pydot_graph.add_edge(e)
+    def regular_2d_index(mat, i, j):
+        return mat[i][j]
+
+    if isinstance(mat, np.matrix):
+        indexer = numpy_matrix_index
+    else:
+        indexer = regular_2d_index
+
+    for n1 in nodes:
+        row_index = (n1[0] * index_max) + n1[1]
+        for n2 in nodes:
+            column_index = (n2[0] * index_max) + n2[1]
+
+            weight = indexer(mat, row_index, column_index)
+            if weight > 0.0 and weight != np.inf:
+                e = pydot.Edge(
+                    str(n1),
+                    str(n2),
+                    headlabel='{:.2f}'.format(weight),
+                    labeldistance=3.5,
+                )
+
+                pydot_graph.add_edge(e)
 
     return pydot_graph
 

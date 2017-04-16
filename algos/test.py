@@ -1,8 +1,11 @@
 import routing
 import random
 
+import numpy as np
 import networkx as nx
 
+from itertools import product
+from math import sqrt
 
 class GridGen:
     @staticmethod
@@ -16,6 +19,24 @@ class GridGen:
             grid.add_edge(e2, e1, weight=weight)
 
         return grid
+
+    @staticmethod
+    def grid_adj_matrix(grid):
+        """Generate an adj matrix where the rows and columns are sorted based
+        on i > j for each node in grid with name (i, j)."""
+        num_nodes = len(grid.nodes())
+        index_max = int(sqrt(num_nodes))
+        mat = np.zeros((num_nodes, num_nodes))
+
+        nodes = product(range(index_max), range(index_max))
+        for n in nodes:
+            row_index = (n[0] * index_max) + n[1]
+
+            for adj_node, w_dict in grid[n].items():
+                column_index = (adj_node[0] * index_max) + adj_node[1]
+                mat[row_index][column_index] = w_dict.get('weight', 0.0)
+
+        return mat
 
 
 class Test:

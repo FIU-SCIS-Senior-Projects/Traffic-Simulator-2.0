@@ -138,10 +138,27 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
+    def check_num_pow2(num):
+        num_type = type(num)
+        if num_type is not int:
+            # if (isinstance(num_type, float) or
+            #     isinstance(num_type, np.float) or
+            #     isinstance(num_type, np.float32) or
+            #     isinstance(num_type, np.float64)) and not num.is_integer():
+            raise TypeError(
+                "{} is not an integer. Type: {}".format(num, type(num))
+            )
+
+            # num = int(num)
+
+        return num != 0 and num & (num - 1) == 0
+
+    @staticmethod
     def create_pow2_diameter_mat(np_mat):
         """Out of an adjacency matrix which denotes some graph G = (V, E, w)
         create an adjacency matrix which denotes some graph G' = (V, E, w_c)
-        with diameter equal to some power of 2.
+        with diameter equal to some power of 2. Also, each edge will have
+        weight >= 1.
 
         See Lemma 3.1 for more details.
 
@@ -155,6 +172,15 @@ class GraphUtils:
         # expect in order to not have an edge between the two nodes.
         np_mat[np_mat < 0.0] = 0.0
         G_min_edge = np_mat[np_mat > 0.0].min()
+
+        G = nx.DiGraph(np_mat)
+        G_diam = GraphUtils.graph_diameter(G)
+
+        # No need to do any transformations
+        if G_min_edge >= 1.0 and \
+           G_diam.is_integer() and \
+           GraphUtils.check_num_pow2(int(G_diam)):
+            return np_mat
 
         epsilon = np.float(0.01)
         mult_const = np.float((1 + epsilon) / G_min_edge)
@@ -377,22 +403,6 @@ class GraphUtils:
                 return False
 
         return True
-
-    @staticmethod
-    def check_num_pow2(num):
-        num_type = type(num)
-        if num_type is not int:
-            if (isinstance(num_type, float) or
-                isinstance(num_type, np.float) or
-                isinstance(num_type, np.float32) or
-                isinstance(num_type, np.float64)) and not num.is_integer():
-                raise TypeError(
-                    "{} is not an integer. Type: {}".format(num, type(num))
-                )
-
-            num = int(num)
-
-        return num != 0 and num & (num - 1) == 0
 
     @staticmethod
     def HDT_leaf_to_leaf_path(hdt, s: HDT_Node, t: HDT_Node):
