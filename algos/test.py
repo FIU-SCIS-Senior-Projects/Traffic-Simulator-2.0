@@ -1,21 +1,58 @@
 import routing
 import random
 
+import numpy as np
 import networkx as nx
 
+from itertools import product
+from math import sqrt
 
 class GridGen:
     @staticmethod
-    def generate_grid(m, n):
+    def generate_grid(m, n, same_weight=None):
         G = nx.grid_2d_graph(m, n)
         grid = nx.DiGraph()
 
         for e1, e2 in G.edges():
-            weight = round(random.uniform(1, 2), 2)
+            # rand_num = 0.0
+            # while rand_num == 0.0:
+            #     rand_num = random.random()
+
+            if same_weight is not None:
+                weight = same_weight
+            else:
+                rand_num = random.uniform(1, 2)
+                weight = round(rand_num, 2)
+
             grid.add_edge(e1, e2, weight=weight)
             grid.add_edge(e2, e1, weight=weight)
 
         return grid
+
+    @staticmethod
+    def grid_adj_matrix(grid):
+        """Generate an adj matrix where the rows and columns are sorted based
+        on i > j for each node in grid with name (i, j)."""
+        num_nodes = len(grid.nodes())
+        dimension_max = int(sqrt(num_nodes))
+        mat = np.zeros((num_nodes, num_nodes))
+
+        nodes = product(range(dimension_max), range(dimension_max))
+        for n in nodes:
+            row_index = (n[0] * dimension_max) + n[1]
+
+            for adj_node, w_dict in grid[n].items():
+                column_index = (adj_node[0] * dimension_max) + adj_node[1]
+                mat[row_index][column_index] = w_dict.get('weight', 0.0)
+
+        return mat
+
+    @staticmethod
+    def generate_grid_diam2h(m, n, same_weight=None):
+        grid = GridGen.generate_grid(m, n, same_weight)
+        mat = GridGen.grid_adj_matrix(grid)
+
+        return routing.GraphDiam2h(mat)
 
 
 class Test:

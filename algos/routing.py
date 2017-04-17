@@ -85,14 +85,12 @@ class GraphDiam2h(nx.DiGraph):
         self.diam = round(self._max_sp())
 
     def _max_sp(self):
-        # return max(self.all_sp_len)
         return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
         return self.all_pairs_sp[(s, t)]
 
     def get_shortest_path_length(self, s, t: int) -> float:
-        # return self.all_sp_len[s][t]
         return self.all_sp_len[(s * self.num_nodes) + t]
 
     def r_neighborhood(self, s: int, r: float) -> FrozenSet[int]:
@@ -113,7 +111,7 @@ class GraphDiam2h(nx.DiGraph):
         # Work around for algorithm intended for undirected graphs. When
         # generating an HDS, there is the possibility that the randomized
         # HDS generator algorithm chooses vertices which are reachable by
-        # s and path length less than or equal to r, but the chosen vertices
+        # s with path length less than or equal to r, but the chosen vertices
         # would not be able to get to s in less than or equal to r path length.
         # This is due to the topology of the graph, where there are nodes
         # which have edges going to other nodes but not an edge coming back
@@ -121,7 +119,7 @@ class GraphDiam2h(nx.DiGraph):
         # graph (since there's no way back with equal path length).
         #
         # The r_neighborhood now instead only chooses those vertices which
-        # s can reach in <= r but *also* those edges should be able to reach
+        # s can reach in <= r but *only if* those edges can also reach
         # s in <= r path length.
         return s_nbhd & s_nbhd_inverse
         # return s_nbhd
@@ -131,6 +129,7 @@ class GraphUtils:
     @staticmethod
     def graph_diameter(G):
         """Compute the diameter of a given graph.
+
         NOTE:
             Given graph MUST be STRONGLY connected.
         """
@@ -139,13 +138,33 @@ class GraphUtils:
         return nx.floyd_warshall_numpy(G).max()
 
     @staticmethod
+    def check_num_pow2(num):
+        num_type = type(num)
+        if num_type is not int:
+            # if (isinstance(num_type, float) or
+            #     isinstance(num_type, np.float) or
+            #     isinstance(num_type, np.float32) or
+            #     isinstance(num_type, np.float64)) and not num.is_integer():
+            raise TypeError(
+                "{} is not an integer. Type: {}".format(num, type(num))
+            )
+
+            # num = int(num)
+
+        return num != 0 and num & (num - 1) == 0
+
+    @staticmethod
     def create_pow2_diameter_mat(np_mat):
         """Out of an adjacency matrix which denotes some graph G = (V, E, w)
         create an adjacency matrix which denotes some graph G' = (V, E, w_c)
-        with diameter equal to some power of 2.
+        with diameter equal to some power of 2. Also, each edge will have
+        weight >= 1.
+
         See Lemma 3.1 for more details.
+
         NOTE:
             The given adjacency matrix MUST denote a STRONGLY connected graph.
+
         """
         # Negative weights delimit a non-existent edge between two nodes, which
         # is equivalent to edge weight of infinity. 0.0 will be used to
@@ -153,6 +172,15 @@ class GraphUtils:
         # expect in order to not have an edge between the two nodes.
         np_mat[np_mat < 0.0] = 0.0
         G_min_edge = np_mat[np_mat > 0.0].min()
+
+        G = nx.DiGraph(np_mat)
+        G_diam = GraphUtils.graph_diameter(G)
+
+        # No need to do any transformations
+        if G_min_edge >= 1.0 and \
+           G_diam.is_integer() and \
+           GraphUtils.check_num_pow2(int(G_diam)):
+            return np_mat
 
         epsilon = np.float(0.01)
         mult_const = np.float((1 + epsilon) / G_min_edge)
@@ -242,7 +270,9 @@ class GraphUtils:
 
         for i in reversed(range(h)):
             H_i = set()
-            r = U * (2**(i-1))
+            # TODO: is there an issue in the book? Is it actually supposed to
+            # be 2**(i-1)?
+            r = U * (2**(i))
             memoized_nbhds = {}  # type: Dict[Tuple[int, int], List[int]]
 
             for cluster in H[i+1]:
@@ -330,6 +360,7 @@ class GraphUtils:
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
         """Merge two paths that have overlapping vertices.
+
         path1: [v_1, v_2, ... , v_k]
                                 ||
         path2:                 [v_k, v_k+1, ...]
@@ -374,22 +405,6 @@ class GraphUtils:
                 return False
 
         return True
-
-    @staticmethod
-    def check_num_pow2(num):
-        num_type = type(num)
-        if num_type is not int:
-            if (isinstance(num_type, float) or
-                isinstance(num_type, np.float) or
-                isinstance(num_type, np.float32) or
-                isinstance(num_type, np.float64)) and not num.is_integer():
-                raise TypeError(
-                    "{} is not an integer. Type: {}".format(num, type(num))
-                )
-
-            num = int(num)
-
-        return num != 0 and num & (num - 1) == 0
 
     @staticmethod
     def HDT_leaf_to_leaf_path(hdt, s: HDT_Node, t: HDT_Node):
