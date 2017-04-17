@@ -129,7 +129,6 @@ class GraphUtils:
     @staticmethod
     def graph_diameter(G):
         """Compute the diameter of a given graph.
-
         NOTE:
             Given graph MUST be STRONGLY connected.
         """
@@ -159,12 +158,9 @@ class GraphUtils:
         create an adjacency matrix which denotes some graph G' = (V, E, w_c)
         with diameter equal to some power of 2. Also, each edge will have
         weight >= 1.
-
         See Lemma 3.1 for more details.
-
         NOTE:
             The given adjacency matrix MUST denote a STRONGLY connected graph.
-
         """
         # Negative weights delimit a non-existent edge between two nodes, which
         # is equivalent to edge weight of infinity. 0.0 will be used to
@@ -360,7 +356,6 @@ class GraphUtils:
     @staticmethod
     def merge(path1, path2: List[Any]) -> List[Any]:
         """Merge two paths that have overlapping vertices.
-
         path1: [v_1, v_2, ... , v_k]
                                 ||
         path2:                 [v_k, v_k+1, ...]
@@ -495,7 +490,6 @@ class GraphUtils:
         node. The "in" node retains all incoming edges from the original node,
         with one outgoing edge into the new "out" node. The "out" node retains
         all outgoing edges from the original node.
-
         The directed edge from "in" to "out" node is given a new weight
         (random or specified), while all original edges retain their original
         weight.

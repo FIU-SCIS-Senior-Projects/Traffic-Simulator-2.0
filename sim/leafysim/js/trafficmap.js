@@ -2,41 +2,56 @@
 //  1. Figure out how to clear all poly lines and circles from map before updating data
 //  1. Re-init map on file drop
 
-// Data Properties
-var defaultGeoDataFileName = "fiu_roads.geojson";
-var initGraphURL = "http://localhost:5000/initialize_graph_dev";
-var getPathURL = "http://localhost:5000/get_path_dev";
-var initGraphStatus;
-var currentData;
+// Settings File
+var settingsFile = "js/settings.json"
 
-// Sim Properties
-var simStop = true;
+// Sim
+var initGraphRoutine;
 var getPathRoutine;
 var checkInitGraphRoutine;
-var simNumActiveVehicles = 0;
-var displayPolyLines = false;
+var currentData;
+var initGraphStatus;
+var simStop = true;
 
-// Graph Structure
+// Graph 
 var nodes = []
 var edges = [];
 var adjacencyMatrix = [];
 
-// Map Properties (these are defaults, real values will come from the data files)
+// Map 
 var map;
 var mapLayer;
-var centerLat = 25.7294483;
-var centerLon = -80.4076104;
-var boundsDeltaLon = 0.2;
-var boundsDeltaLat = 0.1;
-var maxZ = 25;
-var minZ = 12;
-var startZ = minZ;
 var polyLines = [];
 var circles = [];
 
-// Starts the map
-InitData(defaultGeoDataFileName);
+// Map Settings
+var centerLat = 25.7294483;	// The center latitude of the map
+var centerLon = -80.4076104; // The center longitude of the map
+var boundsDeltaLon = 0.2; // The latitude amount the map can be moved from the center
+var boundsDeltaLat = 0.1; // The longitude amount the map can be moved from the center
+var maxZ = 25; // The maximum zoom level
+var minZ = 12; // The minimum zoom level
+var startZ = minZ; // The starting zoom level
+
+// Data Settings
+var defaultGeoDataFileName = "js/data/big_map.geojson"; // The location of the geojson
+var initGraphURL = "http://localhost:5000/initialize_graph_dev"; // the url to init the graph from the router
+var getPathURL = "http://localhost:5000/get_path_dev"; // the url to get a path from the router
+
+// Sim Settings
+var displayPolyLines = false; // The default setting to show/hide the polylines
+var routingAlgoCode = 0; // The algorithm to use to get paths
+var algosToInit = [0]; // The algorithms to be initialized
+var vehicleSpawnRate = 3000; // The rate at which vehicles are spawned (ms)
+var vehicleSpawnCount = 10; // The num of vehicles spawned at a time
+var vehicleMoveDistance = 500; // The distance vehicles travel each interval
+var vehicleMoveInterval = 500; // The interval in which vehicles move
+var updateGraphRate = 30000; // The rate at which the graph will be updated
+
+// Start
 InitDropZone();
+InitSettings(settingsFile);
+
 
 // Initialize the File Drop Zone
 function InitDropZone()
@@ -65,8 +80,50 @@ function InitDropZone()
 	});
 }
 
-// Initializes the geo json data, builds the node graph, and draws the map
-function InitData(file)
+// Initializes settings
+function InitSettings(file)
+{
+	// Read data and initialize graph structures
+	$.getJSON(file, function( data ) 
+	{
+		console.log("Initializing settings...");
+		ProcessSettingsData(data);
+	});
+
+	InitGeoJson(defaultGeoDataFileName);
+}
+
+// Process settings data
+function ProcessSettingsData(data)
+{
+	console.log("Processing settings file...");
+	// Data Properties
+	this.defaultGeoDataFileName = data.defaultGeoDataFileName;
+	this.initGraphURL = data.initGraphURL;
+	this.getPathURL = data.getPathURL;
+
+	// Sim Properties
+	this.displayPolyLines = data.displayPolyLines;
+	this.routingAlgoCode = data.routingAlgoCode;
+	this.algosToInit = data.algosToInit;
+	this.vehicleSpawnRate = data.vehicleSpawnRate;
+	this.vehicleSpawnCount = data.vehicleSpawnCount;
+	this.vehicleMoveDistance = data.vehicleMoveDistance;
+	this.vehicleMoveInterval = data.vehicleMoveInterval;
+	this.updateGraphRate = data.updateGraphRate;
+
+	// Map Properties (these are defaults, real values will come from the data files)
+	this.centerLat = data.centerLat;
+	this.centerLon = data.centerLon;
+	this.boundsDeltaLon = data.boundsDeltaLon;
+	this.boundsDeltaLat = data.boundsDeltaLat;
+	this.maxZ = data.maxZ;
+	this.minZ = data.minZ;
+	this.startZ = data.startZ;
+}
+
+// Initializes the geo json data
+function InitGeoJson(file)
 {
 	nodes = []
 	edges = [];
@@ -78,7 +135,7 @@ function InitData(file)
 	});
 }
 
-// Updates the data when a new geojson file is dragged and dropped onto the map
+// Updates the current data
 function UpdateData(data)
 {
 	currentData = data;
@@ -141,18 +198,19 @@ function UpdateData(data)
 		edges.push(reverseEdge);
 	});
 
-	InitMap();
 	InitAdjacencyMatrix();
-	TestAdjacencyMatrixForEmptyRows();
-	TestAdjacencyMatrixForDeadEndRows();
-	TestAdjacencyMatrixForSingleConnectedNodes();
-	AddDrawGeoDataButton();
-	PrintAdjacencyMatrix();
 
+	// Update the map, matrix, graph
+	UpdateMap();
+	UpdateMatrix();
+	UpdateGraphData();
+
+	// debug
+	UpdateConsole();
 }
 
-// Initializes the leaflet map
-function InitMap()
+// Updates the map
+function UpdateMap()
 {
 	if(edges[0] != null && edges.length > 0)
 	{
@@ -171,7 +229,7 @@ function InitMap()
 	// Init Map
 	map = new L.map('map', 
 	{
-		layers: mapLayer,
+		layers: MQ.darkLayer(),
 		maxZoom: maxZ,
 		minZoom: minZ,
 		maxBounds: [southWestBound, northEastBound],
@@ -193,28 +251,47 @@ function InitMap()
 
 }
 
+function UpdateMatrix()
+{
+	TestAdjacencyMatrixForEmptyRows();
+	TestAdjacencyMatrixForDeadEndRows();
+	TestAdjacencyMatrixForSingleConnectedNodes();
+	InitAdjacencyMatrix();
+}
+
 
 
 // Initializes the graph structure and makes an API call to init the graph in the server side
-function InitGraphData()
+function UpdateGraphData()
 {
-	// var testMatrix =
-	// [[0.0, 1.0, 2.0, 0.0],
-	// [5.0, 0.0, 0.0, 3.0],
-	// [2.0, 0.0, 0.0, 4.0],
-	// [0.0, 1.0, 1.0, 0.0]];
+	var adjacencyMatrixJSON = GetMatrixJson();
 
-	var jsonOBJ = {"map": adjacencyMatrix, "algos": [0,1]};
+	UpdateGraphUI(adjacencyMatrixJSON);
+}
+
+function UpdateGraphUI(matrix)
+{
+	AddDownloadButton(matrix);
+	AddInitGraphButton(matrix);
+	AddShowGraphButton();
+}
+
+function UpdateConsole()
+{
+	PrintAdjacencyMatrix();
+}
+
+function GetMatrixJson()
+{
+	var jsonOBJ = {"map": adjacencyMatrix, "algos": algosToInit};
 	var adjacencyMatrixJSON = JSON.stringify(jsonOBJ);
-
-	AddDownloadButton(adjacencyMatrixJSON);
-	AddInitGraphButton(adjacencyMatrixJSON);
+	return adjacencyMatrixJSON;
 }
 
 // Requests Init graph in the API
 function InitGraph(jsonData)
 {
-	console.log("Requesting API Init Graph...");
+	console.log("Requesting API Init Graph with algos " + algosToInit + "...");
 	initGraphStatus = 0;
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
@@ -240,6 +317,7 @@ function InitGraph(jsonData)
 // Requests paths from the API
 function GetPath(jsonData, callback)
 {
+	console.log("Requesting API get path with algo " + routingAlgoCode + "...");
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
 	    url : getPathURL,
@@ -323,7 +401,7 @@ function AddInitGraphButton(json)
 }
 
 // Adds a toggle button to show/hide the geojson
-function AddDrawGeoDataButton()
+function AddShowGraphButton()
 {
 	var DrawGeoDataButton = L.easyButton(
 	{
@@ -368,12 +446,18 @@ function CheckInitGraphStatus(control)
 		{
 			console.log("Init Graph Successful");
 			control.state('playing');
+			// Start Sim Routines
 			getPathRoutine = coroutine(SimulatePaths);
-			setInterval(getPathRoutine, 3000);
-			var CoolDownAdjacencyMatrixRoutine = coroutine(CoolDownAdjacencyMatrix);
-			setInterval(CoolDownAdjacencyMatrixRoutine, 500);
-			var UpdatePolyLinesRoutine = coroutine(UpdatePolyLines);
-			setInterval(UpdatePolyLinesRoutine, 3000);
+			setInterval(getPathRoutine, vehicleSpawnRate);
+			var coolDownAdjacencyMatrixRoutine = coroutine(CoolDownAdjacencyMatrix);
+			setInterval(coolDownAdjacencyMatrixRoutine, 2000);
+			var updatePolyLinesRoutine = coroutine(UpdatePolyLines);
+			setInterval(updatePolyLinesRoutine, 3000);
+
+			// current'y this routine will only work with dijkstra's
+			var updateGraphRoutine = coroutine(UpdateGraph);
+			setInterval(updateGraphRoutine, updateGraphRate);
+
 			stopCoroutine(checkInitGraphRoutine);
 		}
 		else if(graceCount > 5)
@@ -387,15 +471,42 @@ function CheckInitGraphStatus(control)
 }
 
 // Uses the paths returned from the API to simulate traffic
+function* UpdateGraph()
+{
+	while(!simStop)
+	{
+		var adjacencyMatrixJSON = GetMatrixJson();
+		InitGraph(adjacencyMatrixJSON);
+		yield;
+	}
+}
+
+// Uses the paths returned from the API to simulate traffic
 function* SimulatePaths()
 {
 	while(!simStop)
 	{
-		for(var i = 0; i < 5; i++)
+		for(var i = 0; i < vehicleSpawnCount; i++)
 		{
-			var randStartIndex = RandomIntRange(0,10);
-			var randEndIndex = RandomIntRange(adjacencyMatrix.length-10,adjacencyMatrix.length-1);
-			var jsonObj = {"algorithm": 1, "source": randStartIndex, "target": randEndIndex};
+			var routingStartIndex;
+			var routingEndIndex;
+			if((i % 2) == 0)
+			{
+				routingStartIndex = RandomIntRange(0,5);
+				routingEndIndex = RandomIntRange(adjacencyMatrix.length-6,adjacencyMatrix.length-1);
+			}
+			else
+			{
+				routingStartIndex = RandomIntRange(adjacencyMatrix.length-6,adjacencyMatrix.length-1);
+				routingEndIndex = RandomIntRange(0,5);
+			}
+
+			var jsonObj = 
+			{
+				"algorithm": routingAlgoCode, 
+				"source": routingStartIndex, 
+				"target": routingEndIndex
+			};
 			var getPathJson = JSON.stringify(jsonObj);
 			GetPath(getPathJson, SpawnVehicle);
 		}
@@ -421,16 +532,16 @@ function SimulateVehicle(path)
 	var carIcon = L.icon.mapkey(
 	{
 		icon: '', 
-		background: '#ff001d', 
-		size:4, 
+		background: '#ff2d5b', 
+		size:2, 
 		boxShadow: false,
-		additionalCSS: "box-shadow: 0px 0px 10px #ff001d;",
+		additionalCSS: "box-shadow: 0px 0px 10px #ff2d5b;",
 	});
 
     var animatedMarker = L.animatedMarker(line.getLatLngs(), 
     {
-		distance: 500,  // meters
-		interval: 100, // milliseconds
+		distance: vehicleMoveDistance,  // meters
+		interval: vehicleMoveInterval, // milliseconds
 		icon: carIcon,
 		onEnd: function(path)
 		{
@@ -626,7 +737,7 @@ function DrawPolylines()
 		{
 		    color: color,
 		    weight: 2,
-		    opacity: 0.6,
+		    opacity: 0.9,
 		    smoothFactor: 1
 		});
 		polyline.on("mouseover", function(e)
@@ -644,7 +755,7 @@ function DrawPolylines()
 
 		    layer.setStyle({
 			    weight: 2,
-			    opacity: 0.6,
+			    opacity: 0.9,
 			    smoothFactor: 1
 		    });
 		});
@@ -832,8 +943,6 @@ function TestAdjacencyMatrixForSingleConnectedNodes()
 		console.log(singleConnectedRows);
 		console.log("Edge List has been modified, updating adjacency matrix...");
 		// Since this test can modify the edge list the adjacency matrix needs to be updated
-		InitAdjacencyMatrix();
-		InitGraphData();
 	}
 	else
 	{
@@ -925,42 +1034,6 @@ function GetEdge(startNode, endNode)
 		if(edges[i].startNode == nodes[startNode] && edges[i].endNode == nodes[endNode])
 		{
 			return edges[i];
-		}
-	}
-}
-
-// // Sets the color of a vehicle based on the weight of the edge its on (not currently in use)
-// function* StyleVehicles(vehicle)
-// {
-// 	while(!simStop)
-// 	{
-// 		var point = [vehicle.getLatLng().lat, vehicle.getLatLng().lng];
-// 		var edge = GetClosestEdgeToPoint(point);
-// 		if(!edge.vehicles.includes(vehicle))
-// 		{
-// 			edge.vehicles.push(vehicles);
-// 		}
-// 		var color = GetWeightedEdgeColor(edge);
-// 		vehicle._icon.firstChild.style.backgroundColor = color;
-// 		yield;
-// 	}	
-// }
-
-// Finds the closest edge given a point on the map (not currently working properly)
-function GetClosestEdgeToPoint(point)
-{
-	for(var i = 0; i < edges.length; i++)
-	{
-		//console.log(point);
-		for(var j = 0; j < edges[i].linePoints.length; j++)
-		{
-			//console.log(edges[i].linePoints[j] + ", " + point);
-			if(ArraysEqual(edges[i].linePoints[j], point))
-			{
-				//console.log(edges[i].linePoints[j] + ", " + point);
-				return edges[i];
-			}
-			
 		}
 	}
 }
