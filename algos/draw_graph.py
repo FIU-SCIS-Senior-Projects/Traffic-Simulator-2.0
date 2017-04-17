@@ -45,13 +45,14 @@ def generate_pydot_grid(
         else:
             name = str(i)
 
-        n = pydot.Node(
-            name=name,
-            pos='{},{}!'.format(x, y),
-            shape='circle',
-            fixedsize='true',
+        pydot_graph.add_node(
+            pydot.Node(
+                name=name,
+                pos='{},{}!'.format(x, y),
+                shape='circle',
+                fixedsize='true',
+            )
         )
-        pydot_graph.add_node(n)
 
     def numpy_matrix_index(mat, i, j):
         return mat[i,j]
@@ -79,15 +80,15 @@ def generate_pydot_grid(
                 n2_name = str(j)
 
             if weight > 0.0 and weight != np.inf:
-                e = pydot.Edge(
-                    n1_name,
-                    n2_name,
-                    headlabel='{:.2f}'.format(weight),
-                    labeldistance=3.5,
-                    style='bold',
+                pydot_graph.add_edge(
+                    pydot.Edge(
+                        n1_name,
+                        n2_name,
+                        headlabel='{:.2f}'.format(weight),
+                        labeldistance=3.5,
+                        style='bold',
+                    )
                 )
-
-                pydot_graph.add_edge(e)
 
     return pydot_graph
 
@@ -212,3 +213,48 @@ def create_dots_for_hds(grid, hds, nodes_only=False):
         dot_graphs.append(dot)
 
     return dot_graphs
+
+
+def HDT_to_pydot(hdt, size=(20, 20)):
+    def hdt_label(hdt_struct):
+        return '({{{}}}, {})'.format(
+            ', '.join([str(v) for v in hdt_struct.set]),
+            hdt_struct.level
+        )
+
+    node_levels = {}
+
+    for hdt_node in hdt.nodes():
+        if hdt_node.level not in node_levels:
+            node_levels[hdt_node.level] = {}
+
+        p_node = pydot.Node(
+            name=hdt_label(hdt_node),
+        )
+
+        node_levels[hdt_node.level][hdt_node] = p_node
+
+    pydot_graph = pydot.Dot(
+        graph_type='graph',
+        size='{},{}!'.format(*size),
+        # ratio='fill',
+        # margin='1',
+    )
+
+    for level in sorted(node_levels.keys(), reverse=True):
+        if level == 0:
+            break
+
+        for hdt_node in node_levels[level].keys():
+            parent_node = node_levels[level][hdt_node]
+
+            for hdt_child in [n for n in hdt[hdt_node].keys() if n.level < level]:
+                child_node = node_levels[level-1][hdt_child]
+                pydot_graph.add_edge(
+                    pydot.Edge(
+                        parent_node,
+                        child_node
+                    )
+                )
+
+    return pydot_graph
