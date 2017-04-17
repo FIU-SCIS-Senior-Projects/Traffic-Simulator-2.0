@@ -9,7 +9,7 @@ from math import sqrt
 
 class GridGen:
     @staticmethod
-    def generate_grid(m, n):
+    def generate_grid(m, n, same_weight=None):
         G = nx.grid_2d_graph(m, n)
         grid = nx.DiGraph()
 
@@ -18,8 +18,12 @@ class GridGen:
             # while rand_num == 0.0:
             #     rand_num = random.random()
 
-            rand_num = random.uniform(1, 2)
-            weight = round(rand_num, 2)
+            if same_weight is not None:
+                weight = same_weight
+            else:
+                rand_num = random.uniform(1, 2)
+                weight = round(rand_num, 2)
+
             grid.add_edge(e1, e2, weight=weight)
             grid.add_edge(e2, e1, weight=weight)
 
@@ -44,8 +48,8 @@ class GridGen:
         return mat
 
     @staticmethod
-    def generate_grid_diam2h(m, n):
-        grid = GridGen.generate_grid(m, n)
+    def generate_grid_diam2h(m, n, same_weight=None):
+        grid = GridGen.generate_grid(m, n, same_weight)
         mat = GridGen.grid_adj_matrix(grid)
 
         return routing.GraphDiam2h(mat)

@@ -270,7 +270,9 @@ class GraphUtils:
 
         for i in reversed(range(h)):
             H_i = set()
-            r = U * (2**(i-1))
+            # TODO: is there an issue in the book? Is it actually supposed to
+            # be 2**(i-1)?
+            r = U * (2**(i))
             memoized_nbhds = {}  # type: Dict[Tuple[int, int], List[int]]
 
             for cluster in H[i+1]:
