@@ -7,18 +7,40 @@ import networkx as nx
 from math import sqrt
 from itertools import product
 
-color_set = set([
-    'aliceblue', 'antiquewhite', 'aquamarine','azure','beige', 'bisque',
-	'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
-    'chartreuse', 'chocolate', 'coral','cornflowerblue', 'cornsilk','crimson',
-	'cyan','darkgoldenrod', 'darkgreen', 'darkkhaki', 'darkolivegreen',
-    'darkorange', 'darkorchid', 'darksalmon', 'darkseagreen','darkslateblue',
-    'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet',
-    'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick',
-	'floralwhite', 'forestgreen', 'gainsboro', 'ghostwhite', 'gold',
-    'goldenrod',
-])
+# color_set = set([
+#     'beige',
+# 	'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
+#     'chartreuse', 'chocolate', 'coral','cornflowerblue', 'cornsilk','crimson',
+# 	'cyan', 'darkgreen', 'darkkhaki', 'darkolivegreen',
+#     'darkorange', 'darkorchid', 'darksalmon', 'darkseagreen','darkslateblue',
+#     'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet',
+#     'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick',
+# 	'forestgreen', 'gainsboro', 'gold'
+# ])
 
+# ])
+# color_set = set([
+#     'firebrick3',
+#     'dodgerblue3',
+#     'chartreuse3',
+#     'darkorchid3',
+#     'darkorange',
+#     'yellow1',
+#     'chocolate4',
+#     'lightpink',
+#     'gray56'
+# ])
+
+color_set = set([
+    '#DAE8FC',
+    '#F8CECC',
+    '#D5E8D4',
+    '#FFF2CC',
+    '#E1D5E7',
+    'gray',
+    'hotpink',
+    '#FFE6CC'
+])
 
 def generate_pydot_grid(
         mat, title=None, spread=2, size=(10, 10), use_coord_names=False):
@@ -169,10 +191,10 @@ def draw_pydot(pydot_graph, output_name='png_graph'):
     pydot_graph.write_png(output_name, prog='neato')
 
 
-def create_dots_for_hds(grid, hds, nodes_only=False):
+def create_dots_for_hds(grid, hds, highlight_nodes_only=False):
     dot_graphs = []
 
-    if not nodes_only:
+    if not highlight_nodes_only:
         all_pairs_paths = nx.all_pairs_dijkstra_path(grid)
 
     mat = nx.to_numpy_matrix(grid)
@@ -189,11 +211,13 @@ def create_dots_for_hds(grid, hds, nodes_only=False):
 
             possible_colors = color_set - used_colors
             if not possible_colors:
+                print(i, used_colors, cluster)
                 raise Exception('Ran out of colors')
             else:
-                rand_color = random.sample(color_set - used_colors, 1)[0]
+                rand_color = random.sample(possible_colors, 1)[0]
+                used_colors.add(rand_color)
 
-            if not nodes_only:
+            if not highlight_nodes_only:
                 for v in cluster:
                     for w in cluster - {v}:
                         path = all_pairs_paths[v][w]
@@ -213,6 +237,13 @@ def create_dots_for_hds(grid, hds, nodes_only=False):
         dot_graphs.append(dot)
 
     return dot_graphs
+
+
+def draw_HDS(grid, hds, highlight_nodes_only=False):
+    dots = create_dots_for_hds(grid, hds, highlight_nodes_only)
+
+    for i, dot in enumerate(dots):
+        draw_pydot(dot, output_name='{}-partition'.format(2**i))
 
 
 def HDT_to_pydot(hdt, size=(20, 20)):
