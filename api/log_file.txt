@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "trafficSimFlask.py", line 142, in get_path_dev
-    path = router.get_path(algo, source, target)
-  File "/Users/maxleone/Traffic-Simulator-1.0/algos/routing.py", line 583, in get_path
-    raise GraphNotSet
-routing.GraphNotSet
-
-{"algorithm": 0, "source": 35, "target": 4}
-==========================================

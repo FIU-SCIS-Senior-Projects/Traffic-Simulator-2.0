@@ -49,9 +49,9 @@ var vehicleMoveInterval = 500; // The interval in which vehicles move
 var updateGraphRate = 30000; // The rate at which the graph will be updated
 
 // Start
-InitSettings(settingsFile);
-InitGeoJson(defaultGeoDataFileName);
 InitDropZone();
+InitSettings(settingsFile);
+
 
 // Initialize the File Drop Zone
 function InitDropZone()
@@ -86,13 +86,17 @@ function InitSettings(file)
 	// Read data and initialize graph structures
 	$.getJSON(file, function( data ) 
 	{
-		ProcessSettingsFile(data);
+		console.log("Initializing settings...");
+		ProcessSettingsData(data);
 	});
+
+	InitGeoJson(defaultGeoDataFileName);
 }
 
 // Process settings data
 function ProcessSettingsData(data)
 {
+	console.log("Processing settings file...");
 	// Data Properties
 	this.defaultGeoDataFileName = data.defaultGeoDataFileName;
 	this.initGraphURL = data.initGraphURL;
@@ -287,7 +291,7 @@ function GetMatrixJson()
 // Requests Init graph in the API
 function InitGraph(jsonData)
 {
-	console.log("Requesting API Init Graph...");
+	console.log("Requesting API Init Graph with algos " + algosToInit + "...");
 	initGraphStatus = 0;
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
@@ -313,7 +317,7 @@ function InitGraph(jsonData)
 // Requests paths from the API
 function GetPath(jsonData, callback)
 {
-	console.log("Requesting API get path...");
+	console.log("Requesting API get path with algo " + routingAlgoCode + "...");
 	// API Call CURENTLY NOT WORKING
 	$.ajax({
 	    url : getPathURL,
