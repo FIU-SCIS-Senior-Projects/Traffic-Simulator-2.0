@@ -3,7 +3,7 @@ import networkx as nx
 import speed as sp
 
 from math import ceil, log2
-from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple
+from typing import Any, Tuple, List, Dict, FrozenSet, NamedTuple, Set
 from array import array
 
 
@@ -88,7 +88,7 @@ class GraphDiam2h(nx.DiGraph):
         return max([max(dists) for dists in self.all_sp_len])
 
     def get_shortest_path(self, s, t: int) -> List[int]:
-        return self.all_pairs_sp[(s, t)]
+        return self.all_pairs_sp[s][t]
 
     def get_shortest_path_length(self, s, t: int) -> float:
         return self.all_sp_len[(s * self.num_nodes) + t]
@@ -196,12 +196,11 @@ class GraphUtils:
 
     @staticmethod
     def all_pairs_dijkstra_shortest_path_and_length(
-            G) -> Tuple[Dict[Tuple[int, int], List[int]], List[array]]:
-        all_pairs = nx.all_pairs_dijkstra_path(G)
+            G) -> Tuple[Dict[int, Dict[int, List[int]]], List[array]]:
 
         num_nodes = len(G.nodes())
 
-        all_pairs_sp = {}
+        all_pairs = nx.all_pairs_dijkstra_path(G)
         all_sp_len = [array('f', [0.0] * num_nodes) for _ in range(num_nodes)]
 
         for s in all_pairs:
@@ -212,22 +211,9 @@ class GraphUtils:
                     length += G[prev][v]['weight']
                     prev = v
 
-                all_pairs_sp[(s, t)] = all_pairs[s][t]
                 all_sp_len[s][t] = length
 
-        return all_pairs_sp, all_sp_len
-
-    @staticmethod
-    def dijkstra_routing_scheme(G) -> Dict[Tuple[int, int], List[int]]:
-        routing_scheme = {}
-
-        all_pairs_dict = nx.all_pairs_dijkstra_path(G)
-
-        for s in all_pairs_dict:
-            for t in all_pairs_dict[s]:
-                routing_scheme[(s, t)] = all_pairs_dict[s][t]
-
-        return routing_scheme
+        return all_pairs, all_sp_len
 
     @staticmethod
     def randomized_HDS_gen(G, pi=None, U=None) -> HDS:
@@ -429,7 +415,7 @@ class GraphUtils:
 
     @staticmethod
     def top_down_integral_scheme_generation(
-            G, const=27) -> Dict[Tuple[int, int], List[int]]:
+            G, const=27) -> Dict[int, Dict[int, List[int]]]:
         if not GraphUtils.check_num_pow2(G.diam):
             raise NonPowerOf2Graph("{}".format(G.diam))
 
@@ -451,9 +437,10 @@ class GraphUtils:
                 alpha_padded[node][i] = \
                     GraphUtils.check_alpha_padded(G, hds, alpha, node)
 
-        scheme = {}  # type: Dict[Tuple[int, int], List[int]]
+        scheme = {}  # type: Dict[int, Dict[int, List[int]]]
 
         for s in V:
+            scheme[s] = {}
             for t in V - {s}:
                 tree = None
 
@@ -476,10 +463,10 @@ class GraphUtils:
                 t_node = HDT_Node(frozenset([t]), 0)
 
                 path = GraphUtils.HDT_leaf_to_leaf_path(tree, s_node, t_node)
-                scheme[(s, t)] = GraphUtils.projection(G, path)
+                scheme[s][t] = GraphUtils.projection(G, path)
 
         for v in V:
-            scheme[(v, v)] = [v]
+            scheme[v][v] = [v]
 
         return scheme
 
@@ -521,35 +508,40 @@ class Routing(object):
             algos: List[int] = None) -> None:
         self.set_graph(M, algos=algos)
 
-    def get_dijkstra_scheme(self, G, remove_above):
-        in_out_dijkstra_scheme = \
-            GraphUtils.dijkstra_routing_scheme(G)
+    def _filter_out_above(self, original_dict, equal_or_above):
+        """Remove all keys as well as all nodes that are equal or above to
+        equal_or_above.
+        """
+        filtered_dict = {}
+        for k1, v1 in original_dict.items():
+            if k1 >= equal_or_above:
+                continue
 
-        # Filterting out all keys which contain nodes that have been generated
-        # in the in_out graph generation. Also removing all the new out nodes
-        # from the generated paths.
-        dijkstra_scheme = {
-            key: [int(v) for v in val if v < remove_above]
-            for key, val in in_out_dijkstra_scheme.items()
-            if key[0] < remove_above and key[1] < remove_above
-        }
+            filtered_dict[k1] = {}
+            for k2, v2 in v1.items():
+                if k2 >= equal_or_above:
+                    continue
 
-        return dijkstra_scheme
+                filtered_dict[k1][k2] = \
+                    [node for node in v2 if node < equal_or_above]
 
-    def get_top_down_integral_scheme(self, G, remove_above):
-        in_out_top_down_integral_scheme = \
-            GraphUtils.top_down_integral_scheme_generation(G)
+        return filtered_dict
 
-        # Filterting out all keys which contain nodes that have been generated
-        # in the in_out graph generation. Also removing all the new out nodes
-        # from the generated paths.
-        top_down_integral_scheme = {
-            key: [int(v) for v in val if v < remove_above]
-            for key, val in in_out_top_down_integral_scheme.items()
-            if key[0] < remove_above and key[1] < remove_above
-        }
+    def get_dijkstra_scheme(self, G, equal_or_above):
+        # Removing all occurences of in_out nodes, as they don't belong in
+        # the original graph.
+        return self._filter_out_above(
+            nx.all_pairs_dijkstra_path(G),
+            equal_or_above
+        )
 
-        return top_down_integral_scheme
+    def get_top_down_integral_scheme(self, G, equal_or_above):
+        # Removing all occurences of in_out nodes, as they don't belong in
+        # the original graph.
+        return self._filter_out_above(
+            GraphUtils.top_down_integral_scheme_generation(G),
+            equal_or_above
+        )
 
     def set_graph(self, M: List[List[float]], algos=None) -> None:
         self._graph = None
@@ -561,7 +553,7 @@ class Routing(object):
         num_vertices = original_mat.shape[0]
 
         self._graph = GraphDiam2h(in_out_mat)
-        self._routing_schemes = {}
+        self._routing_schemes = {}  # type: Dict[int, Dict[int, Dict[int, List[int]]]]
 
         generate_schemes = {
             0: self.get_dijkstra_scheme,
@@ -581,8 +573,7 @@ class Routing(object):
                 self._routing_schemes[i] = func(self._graph, num_vertices)
 
     def get_path(self, algo, s, t: int) -> List[int]:
-        """Get optimal path from s to t depending on the chosen algorithm.
-        """
+        """Get optimal path from s to t depending on the chosen algorithm."""
         if self._graph is None:
             raise GraphNotSet
 
@@ -591,7 +582,7 @@ class Routing(object):
             raise UnknownAlgorithm
 
         try:
-            path = self._routing_schemes[algo][(s, t)]
+            path = self._routing_schemes[algo][s][t]
         except KeyError:  # One of the vertices is not in graph
             raise VertexNonExistent
 
