@@ -530,10 +530,18 @@ class Routing(object):
     def get_dijkstra_scheme(self, G, equal_or_above):
         # Removing all occurences of in_out nodes, as they don't belong in
         # the original graph.
-        return self._filter_out_above(
-            nx.all_pairs_dijkstra_path(G),
-            equal_or_above
-        )
+        all_pairs = nx.all_pairs_dijkstra_path(G)
+        scheme = {}
+
+        for k1, v1 in all_pairs.items():
+            k1_conv = int(k1)
+            scheme[k1_conv] = {}
+
+            for k2, v2 in all_pairs[k1].items():
+                k2_conv = int(k2)
+                scheme[k1_conv][k2_conv] = [int(x) for x in v2]
+
+        return self._filter_out_above(scheme, equal_or_above)
 
     def get_top_down_integral_scheme(self, G, equal_or_above):
         # Removing all occurences of in_out nodes, as they don't belong in
