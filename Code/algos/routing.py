@@ -440,8 +440,10 @@ class GraphUtils:
         scheme = {}  # type: Dict[int, Dict[int, List[int]]]
 
         for s in V:
-            scheme[s] = {}
+            s_int = int(s)
+            scheme[s_int] = {}
             for t in V - {s}:
+                t_int = int(t)
                 tree = None
 
                 for i in range(num_iterations):
@@ -463,10 +465,12 @@ class GraphUtils:
                 t_node = HDT_Node(frozenset([t]), 0)
 
                 path = GraphUtils.HDT_leaf_to_leaf_path(tree, s_node, t_node)
-                scheme[s][t] = GraphUtils.projection(G, path)
+                scheme[s_int][t_int] = \
+                    [int(v) for v in GraphUtils.projection(G, path)]
 
         for v in V:
-            scheme[v][v] = [v]
+            v_int = int(v)
+            scheme[v_int][v_int] = [int(v)]
 
         return scheme
 
