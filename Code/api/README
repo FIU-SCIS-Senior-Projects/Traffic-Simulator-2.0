@@ -1,0 +1,67 @@
+To create new instance of executable trafficSimFlask.exe:
+Required python version: 3.5
+
+First pip3 install the following packages
+flask
+numpy
+networkx
+flask_limiter
+flask_cors
+
+Then on the spec file found in this directory, run the command
+python trafficSimFlask.py
+
+
+**********************************************************************************
+
+This will host the Api at localhost:8000
+Endpoints:
+POST: /initialize_graph
+Body:
+{
+  "map": [[<float>]]
+}
+Response:
+"The graph was initialized: <Boolean>"
+
+POST: /init_graph_unity
+{
+  "map":[
+    {
+      "row":[
+        <float>,
+        <float>
+      ]
+    },
+    {
+      "row":[
+        <float>,
+        <float>
+      ]
+    }
+  ]
+}
+
+ALTERNATIVE, IF POSSIBLE:
+Body:
+{
+  "map":[
+    {"row":[<float>,<float>]},
+    {"row":[<float>,<float>]},
+  ]
+}
+Response:
+"The graph was initialized: <Boolean>"
+
+
+POST: /get_path
+Body:
+{
+  "algorithm":<int>
+  "source":<int>
+  "target":<int>
+}
+Response:
+{
+  "path": [<int>]
+}
