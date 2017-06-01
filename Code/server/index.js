@@ -19,6 +19,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'static/html/simulation.html'));
 });
 
+app.get('/test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'static/html/test.html'));
+});
+
 app.listen(appPort, () => {
   console.log(`Traffic Simulator listening on port ${appPort}.`);
 });
