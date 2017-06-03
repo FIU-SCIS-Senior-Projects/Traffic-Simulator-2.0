@@ -4,6 +4,8 @@
   "description": "Traffic Simulator",
   "main": "index.js",
   "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "dev": "webpack --config webpack.config.js --watch",
     "start": "nodemon ./server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,11 +13,15 @@
     "type": "git",
     "url": "https://github.com/FIU-SCIS-Senior-Projects/Traffic-Simulator-2.0.git"
   },
-  "author": "Matt Thomson <red.cataclysm@gmail.com",
+  "author": "Matt Thomson <red.cataclysm@gmail.com>",
   "dependencies": {
-    "express": "^4.15.3"
+    "body-parser": "^1.17.2",
+    "dom-object": "https://github.com/redice44/dom-object.git#v0.0.7",
+    "express": "^4.15.3",
+    "superagent": "^3.5.2"
   },
   "devDependencies": {
-    "nodemon": "^1.11.0"
+    "nodemon": "^1.11.0",
+    "webpack": "^2.6.1"
   }
 }
