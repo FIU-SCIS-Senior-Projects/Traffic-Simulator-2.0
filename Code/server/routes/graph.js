@@ -15,12 +15,12 @@ router.post('/', (req, res) => {
   // });
 
   // py_initGraph.stdout.on('end', () => {
-  //   console.log(`dataString: ${dataString}`);
+    // console.log(`dataString: ${dataString}`);
   //   res.json({ msg: `POST /graph ${dataString}` });
   // });
 
-  // // console.log('adjMatrix', JSON.stringify(req.body.adjMatrix));
-  // console.log('stuff')
+  // console.log('adjMatrix', JSON.stringify(req.body.adjMatrix));
+    // console.log('stuff')
   // // py_initGraph.stdin.write(JSON.stringify(req.body.adjMatrix));
   // console.log(JSON.stringify(req.body.adjMatrix).length);
   // py_initGraph.stdin.write(JSON.stringify(req.body.adjMatrix));
@@ -28,11 +28,21 @@ router.post('/', (req, res) => {
 
 
   let pyshell = new PythonShell('./server/algo/graph/node_wrapper.py');
+  let pyResult = null;
 
   pyshell.send(JSON.stringify(req.body.adjMatrix));
 
   pyshell.on('message', (msg) => {
-    console.log(msg);
+    console.log('Parsing Mesage');
+    pyResult = JSON.parse(msg);
+    // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
+    // console.log(pyResult);
+    // console.log(pyResult.adjMatrix);
+    // console.log(pyResult.num_nodes);
+    // console.log(pyResult.all_pairs_sp);
+    // console.log(pyResult.all_sp_len);
+    // console.log(pyResult.all_sp_len_transpose);
+    // console.log(pyResult.diam);
   });
 
   pyshell.end((err) => {
@@ -40,9 +50,10 @@ router.post('/', (req, res) => {
       console.log('error', err);
       res.status(500).send('error');
     }
+    // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
 
     console.log('finished');
-    res.json({ msg: `POST /graph` });
+    res.json({ msg: `POST /graph`, data: pyResult });
   });
 });
 

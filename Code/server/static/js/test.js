@@ -3921,6 +3921,7 @@ function testPathPost () {
     console.log(res);
     results.append('p { POST /path success }');
   }).catch((err) => {
+    console.log(err);
     results.append('p { POST /path failure }');
   });
 }
@@ -3935,6 +3936,7 @@ function testGraphPost (data) {
         } else {
 
           var json = JSON.parse(res.text);
+
           resolve(json);
         }
       });
@@ -3942,8 +3944,13 @@ function testGraphPost (data) {
 
   test.then((res) => {
     console.log('POST /graph', res);
+    // console.log(res.data.all_pairs_sp);
+    // var j = res.data.all_pairs_sp.replace(/{0:/g, "{a:");
+    // console.log(j);
+    // console.log(JSON.parse(j));
     results.append('p { POST /graph success }');
   }).catch((err) => {
+    console.log(err);
     results.append('p { POST /graph failure }');
   });
 }
