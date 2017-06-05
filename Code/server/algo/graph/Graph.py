@@ -111,13 +111,14 @@ class Graph(nx.DiGraph):
   # Used to transport the values of the Graph across  
   # multiple platforms and processes.
   def importJson(self, graph):
-    jsonGraph = json.loads(graph)
-    self.adjMatrix = jsonGraph.adjMatrix
-    self.num_nodes = jsonGraph.num_nodes
-    self.all_pairs_sp = jsonGraph.all_pairs_sp
-    self.all_sp_len = jsonGraph.all_sp_len
-    self.all_sp_len_transpose = jsonGraph.all_sp_len_transpose
-    self.diam = jsonGraph.diam
+    # jsonGraph = json.loads(graph)
+    self.adjMatrix = graph['adjMatrix']
+    self.num_nodes = graph['num_nodes']
+    self.all_pairs_sp = graph['all_pairs_sp']
+    self.all_sp_len = graph['all_sp_len']
+    self.all_sp_len_transpose = graph['all_sp_len_transpose']
+    self.diam = graph['diam']
+    print('{"msg":"completed import"}');
 
 
 

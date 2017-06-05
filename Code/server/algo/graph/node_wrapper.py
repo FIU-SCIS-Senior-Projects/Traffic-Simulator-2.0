@@ -12,11 +12,17 @@ def read_in():
   return json.loads(lines[0])
 
 def main():
-  lines = read_in()
+  data = read_in()
+  # print(data, file=sys.stderr)
 
   # g = Graph(lines)
-  g = Graph(matrix=lines, needSetup=True)
-  print(g.exportJson())
+  if data['setup']:
+    g = Graph(matrix=data['adjMatrix'], needSetup=True)
+    print(g.exportJson())
+  else:
+    g = Graph(matrix=None, needSetup=False)
+    g.importJson(data['graph'])
+
   # print('Graph Created')
   # except EmptyMatrixProvided:
   #   print('Empty Matrix Provided')

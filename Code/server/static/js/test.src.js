@@ -48,6 +48,15 @@ function testGraphPost (data) {
     // var j = res.data.all_pairs_sp.replace(/{0:/g, "{a:");
     // console.log(j);
     // console.log(JSON.parse(j));
+
+    // testImportJSON({
+    //   adjMatrix: res.data.adjMatrix,
+    //   all_pairs_sp: res.data.all_pairs_sp,
+    //   all_sp_len: res.data.all_sp_len,
+    //   all_sp_len_transpose: res.data.all_sp_len_transpose,
+    //   diam: res.data.diam,
+    //   num_nodes: res.data.num_nodes
+    // });
     results.append('p { POST /graph success }');
   }).catch((err) => {
     console.log(err);
@@ -170,6 +179,40 @@ function testGeoJSON () {
     results.append('p { POST /graph/geo failure }');
   });
 
+}
+
+function testImportJSON (graph) {
+  let test = new Promise((resolve, reject) => {
+    request.post('http://localhost:8080/graph')
+      .send({
+        setup: false,
+        adjMatrix: graph.adjMatrix,
+        all_pairs_sp: graph.all_pairs_sp,
+        all_sp_len: graph.all_sp_len,
+        all_sp_len_transpose: graph.all_sp_len_transpose,
+        diam: graph.diam,
+        num_nodes: graph.num_nodes
+      })
+      .end((err, res) => {
+        if (err) {
+          reject(err);
+        } else {
+
+          var json = JSON.parse(res.text);
+
+          resolve(json);
+        }
+      });
+  });
+
+  test.then((res) => {
+    console.log('POST /graph/import', res);
+    results.append('p { POST /graph/import success }');
+  }).catch((err) => {
+    console.log(err);
+    results.append('p { POST /graph/import failure }');
+  });
+  
 }
 
 function initAdjacenyMatrix (nodes, edges) {
