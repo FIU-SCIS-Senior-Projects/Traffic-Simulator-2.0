@@ -3,14 +3,14 @@ const app = express();
 const path = require('path');
 const bodyParser = require('body-parser');
 
-const graphRoutes = require('./routes/graph');
+const graphRoutes = require('./routes/graph/routes');
 const pathRoutes = require('./routes/path');
 const testRoutes = require('./routes/test');
 const appPort = 8080;
 
 app.use(express.static(path.join(__dirname, 'static')));
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb'}));
 
 app.all('*', (req, res, next) => {
   console.log(`[${req.method}] ${req.path}`);

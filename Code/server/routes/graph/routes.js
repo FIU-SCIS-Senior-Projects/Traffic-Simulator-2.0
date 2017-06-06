@@ -4,7 +4,9 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const PythonShell = require('python-shell');
 
-const geojson = require('../data/big_geo');
+const geojson = require('../../data/big_geo');
+
+const parseGeoJson = require('./geojson');
 
 let G = null;
 
@@ -38,10 +40,10 @@ router.post('/', (req, res) => {
     // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
     console.log('finished init');
     // console.log(pyResult);
-    testImport(pyResult, res);
+    // testImport(pyResult, res);
 
 
-    // res.json({ msg: `POST /graph`, data: pyResult });
+    res.json({ msg: `POST /graph`, data: pyResult });
   });
 });
 
@@ -74,7 +76,7 @@ function testImport (result, res) {
       res.status(500).send('error');
     }
     // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
-    console.log(pyResult);
+    // console.log(pyResult);
     console.log('finished import');
     res.json({ msg: `POST /graph`, data: pyResult });
   });
@@ -116,5 +118,11 @@ router.post('/import', (req, res) => {
 router.get('/geo', (req, res) => {
   res.json(geojson);
 });
+
+router.post('/geo', (req, res) => {
+  let adjMatrix = parseGeoJson(req.body.geojson);
+  res.json({ adjMatrix: adjMatrix });
+});
+
 
 module.exports = router;

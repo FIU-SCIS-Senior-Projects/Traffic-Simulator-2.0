@@ -3987,91 +3987,99 @@ function testGeoJSON () {
 
   test.then((res) => {
     results.append('p { POST /graph/geo success }');
+
     console.log(res);
 
-    let nodeCount = 0;
-    let nodes = [];
-    let edges = [];
-    let startNode;
-    let endNode;
-    console.log(`# Features: ${res.features.length}`);
-    res.features.forEach((feature) => {
-      let coords = [];
-      startNode = null;
-      endNode = null;
-      feature.geometry.coordinates.forEach((coord) => {
-        coords.push([coord[1], coord[0]]);
+    __WEBPACK_IMPORTED_MODULE_0_superagent___default.a.post('http://localhost:8080/graph/geo')
+      .send({ geojson: res })
+      .end((err, asyncRes) => {
+        // console.log(asyncRes);
+        console.log(JSON.parse(asyncRes.text));
       });
 
-      // console.log(`Nodes length ${nodes.length}`);
-      for (var i = 0; i < nodes.length; i++) {
-        if (ArraysEqual(nodes[i].latlng, coords[0])) {
-          startNode = nodes[i];
-        }
-        if (ArraysEqual(nodes[i].latlng, coords[coords.length - 1])) {
-          endNode = nodes[i];
-        }
-      }
+    // let nodeCount = 0;
+    // let nodes = [];
+    // let edges = [];
+    // let startNode;
+    // let endNode;
+    // console.log(`# Features: ${res.features.length}`);
+    // res.features.forEach((feature) => {
+    //   let coords = [];
+    //   startNode = null;
+    //   endNode = null;
+    //   feature.geometry.coordinates.forEach((coord) => {
+    //     coords.push([coord[1], coord[0]]);
+    //   });
 
-      if (!startNode) {
-        startNode = { index: nodeCount, latlng: coords[0] };
-        nodeCount++;
-        nodes.push(startNode);
-      }
+    //   // console.log(`Nodes length ${nodes.length}`);
+    //   for (var i = 0; i < nodes.length; i++) {
+    //     if (ArraysEqual(nodes[i].latlng, coords[0])) {
+    //       startNode = nodes[i];
+    //     }
+    //     if (ArraysEqual(nodes[i].latlng, coords[coords.length - 1])) {
+    //       endNode = nodes[i];
+    //     }
+    //   }
 
-      if (!endNode) {
-        endNode = { index: nodeCount, latlng: coords[coords.length - 1] };
-        nodeCount++;
-        nodes.push(endNode);
-      }
+    //   if (!startNode) {
+    //     startNode = { index: nodeCount, latlng: coords[0] };
+    //     nodeCount++;
+    //     nodes.push(startNode);
+    //   }
 
-      let edge = {
-        startNode: startNode,
-        endNode: endNode,
-        linePoints: coords,
-        polyLine: null
-      };
-      // console.log('coords', coords);
-      // let rev = arrayRev(coords);
-      // console.log('rev', rev);
+    //   if (!endNode) {
+    //     endNode = { index: nodeCount, latlng: coords[coords.length - 1] };
+    //     nodeCount++;
+    //     nodes.push(endNode);
+    //   }
 
-      let reverseEdge = {
-        startNode: endNode,
-        endNode: startNode,
-        linePoints: coords.reverse(),
-        // linePoints: rev,
-        polyLine: null
-      };
+    //   let edge = {
+    //     startNode: startNode,
+    //     endNode: endNode,
+    //     linePoints: coords,
+    //     polyLine: null
+    //   };
+    //   // console.log('coords', coords);
+    //   // let rev = arrayRev(coords);
+    //   // console.log('rev', rev);
 
-      edges.push(edge);
-      edges.push(reverseEdge);
+    //   let reverseEdge = {
+    //     startNode: endNode,
+    //     endNode: startNode,
+    //     linePoints: coords.reverse(),
+    //     // linePoints: rev,
+    //     polyLine: null
+    //   };
 
-      // console.log('Coordinates', coords);
-      // console.log('edges', edges);
-    });
+    //   edges.push(edge);
+    //   edges.push(reverseEdge);
 
-    let adjMatrix = initAdjacenyMatrix(nodes, edges);
-    // console.log('Adjacency Matrix', adjMatrix);
-    let reduced = adjMatrix.reduce((acc, v) => {
-      return acc + v.reduce((acc, e) => {
-        return acc + e;
-      }, 0)
-    }, 0)
-    console.log('1st init', reduced);
+    //   // console.log('Coordinates', coords);
+    //   // console.log('edges', edges);
+    // });
 
-    TestAdjacencyMatrixForSingleConnectedNodes(adjMatrix, nodes, edges);
+    // let adjMatrix = initAdjacenyMatrix(nodes, edges);
+    // // console.log('Adjacency Matrix', adjMatrix);
+    // let reduced = adjMatrix.reduce((acc, v) => {
+    //   return acc + v.reduce((acc, e) => {
+    //     return acc + e;
+    //   }, 0)
+    // }, 0)
+    // console.log('1st init', reduced);
 
-    adjMatrix = initAdjacenyMatrix(nodes, edges);
-    reduced = adjMatrix.reduce((acc, v) => {
-      return acc + v.reduce((acc, e) => {
-        return acc + e;
-      }, 0)
-    }, 0)
-    console.log('2nd init', reduced);
-    // test matrix for empty rows
-    // test for deadend rows
-    // test for single connected nodes
-    testGraphPost({adjMatrix, adjMatrix});
+    // TestAdjacencyMatrixForSingleConnectedNodes(adjMatrix, nodes, edges);
+
+    // adjMatrix = initAdjacenyMatrix(nodes, edges);
+    // reduced = adjMatrix.reduce((acc, v) => {
+    //   return acc + v.reduce((acc, e) => {
+    //     return acc + e;
+    //   }, 0)
+    // }, 0)
+    // console.log('2nd init', reduced);
+    // // test matrix for empty rows
+    // // test for deadend rows
+    // // test for single connected nodes
+    // testGraphPost({adjMatrix, adjMatrix});
   
 
   }).catch((err) => {
