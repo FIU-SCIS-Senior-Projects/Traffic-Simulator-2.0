@@ -20,16 +20,10 @@ router.post('/', (req, res) => {
   pyshell.send(JSON.stringify(msg));
 
   pyshell.on('message', (msg) => {
-    console.log('Parsing Mesage');
+    console.log('Parsing Mesage', msg.length);
+    console.log(msg.substring(0, 100));
+    console.log(msg.substring(msg.length - 100, msg.length - 1));
     pyResult = JSON.parse(msg);
-    // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
-    // console.log(pyResult);
-    // console.log(pyResult.adjMatrix);
-    // console.log(pyResult.num_nodes);
-    // console.log(pyResult.all_pairs_sp);
-    // console.log(pyResult.all_sp_len);
-    // console.log(pyResult.all_sp_len_transpose);
-    // console.log(pyResult.diam);
   });
 
   pyshell.end((err) => {
@@ -122,6 +116,43 @@ router.get('/geo', (req, res) => {
 router.post('/geo', (req, res) => {
   let adjMatrix = parseGeoJson(req.body.geojson);
   res.json({ adjMatrix: adjMatrix });
+});
+
+router.post('/dijkstra', (req, res) => {
+  // let adjMatrix = parseGeoJson(req.body.geojson);
+  let data = {
+    adjMatrix: req.body.adjMatrix,
+    setup: req.body.setup,
+    source: req.body.source,
+    destination: req.body.destination
+  };
+
+  let pyshell = new PythonShell('./server/algo/graph/dijkstra.py');
+  let pyResult = null;
+
+  pyshell.send(JSON.stringify(data));
+
+  pyshell.on('message', (msg) => {
+    console.log('Parsing Dijkstra Message', msg.length);
+    console.log(msg.substring(0, 100));
+    console.log(msg.substring(msg.length - 100, msg.length - 1));
+    pyResult = JSON.parse(msg);
+  });
+
+  pyshell.end((err) => {
+    if (err) {
+      console.log('error', err);
+      res.status(500).send('error');
+    }
+    // pyResult.all_pairs_sp = JSON.parse(pyResult.all_pairs_sp);
+    // console.log(pyResult);
+    console.log('finished dijkstra');
+    pyResult = pyResult.filter((point, i) => {
+      return i % 2 === 0;
+    });
+    res.json({ msg: `POST /graph/dijkstra`, data: pyResult });
+  });
+
 });
 
 
