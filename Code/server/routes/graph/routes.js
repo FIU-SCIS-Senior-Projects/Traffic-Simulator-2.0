@@ -5,7 +5,7 @@ const PythonShell = require('python-shell');
 
 const geojson = require('../../data/big_geo');
 
-const parseGeoJson = require('./geojson');
+// const parseGeoJson = require('./geojson');
 
 let G = null;
 
@@ -112,10 +112,10 @@ router.get('/geo', (req, res) => {
   res.json(geojson);
 });
 
-router.post('/geo', (req, res) => {
-  let adjMatrix = parseGeoJson(req.body.geojson);
-  res.json({ adjMatrix: adjMatrix });
-});
+// router.post('/geo', (req, res) => {
+//   let adjMatrix = parseGeoJson(req.body.geojson);
+//   res.json({ adjMatrix: adjMatrix });
+// });
 
 router.post('/dijkstra', (req, res) => {
   // let adjMatrix = parseGeoJson(req.body.geojson);
