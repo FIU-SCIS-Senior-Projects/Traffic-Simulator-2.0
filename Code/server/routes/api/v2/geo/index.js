@@ -1,6 +1,3 @@
-
-const geojson = require('../../data/big_geo');
-
 function parseGeoJson (geojson) {
   let nodeCount = 0;
   let nodes = [];
@@ -66,8 +63,6 @@ function parseGeoJson (geojson) {
 
 
 function initAdjacenyMatrix (nodes, edges) {
-  // console.log('nodes', nodes);
-  // console.log('edges', edges);
   let adjacencyMatrix = [];
 
   for (var i = 0; i < nodes.length; i++) {
@@ -92,7 +87,6 @@ function initAdjacenyMatrix (nodes, edges) {
 
 function TestAdjacencyMatrixForSingleConnectedNodes(adjacencyMatrix, nodes, edges)
 {
-  console.log("Testing adjacency matrix for single connected nodes...");
   var singleConnectedRows = [];
   for(var i = 0; i < adjacencyMatrix.length; i++)
   {
@@ -118,14 +112,14 @@ function TestAdjacencyMatrixForSingleConnectedNodes(adjacencyMatrix, nodes, edge
   }
   if(singleConnectedRows.length > 0)
   {
-    console.log("Single connected nodes found in adjacency matrix at rows...");
+    // console.log("Single connected nodes found in adjacency matrix at rows...");
     // console.log(singleConnectedRows);
-    console.log("Edge List has been modified, updating adjacency matrix...");
+    // console.log("Edge List has been modified, updating adjacency matrix...");
     // Since this test can modify the edge list the adjacency matrix needs to be updated
   }
   else
   {
-    console.log("No single connected nodes found in adjacency matrix");
+    // console.log("No single connected nodes found in adjacency matrix");
   }
 }
 
@@ -197,4 +191,4 @@ function ArraysEqual(arr1, arr2)
     return true;
 }
 
-module.exports = parseGeoJson;
+exports.format = parseGeoJson;

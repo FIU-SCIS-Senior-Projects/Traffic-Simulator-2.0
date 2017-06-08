@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const spawn = require('child_process').spawn;
 const PythonShell = require('python-shell');
 
 const geojson = require('../../data/big_geo');

@@ -3,6 +3,7 @@ const app = express();
 const path = require('path');
 const bodyParser = require('body-parser');
 
+const apiRoutes = require('./routes/api/v2');
 const graphRoutes = require('./routes/graph/routes');
 const pathRoutes = require('./routes/path');
 const testRoutes = require('./routes/test');
@@ -21,6 +22,8 @@ app.all('*', (req, res, next) => {
 app.use('/graph', graphRoutes);
 app.use('/path', pathRoutes);
 app.use('/test', testRoutes);
+
+app.use('/api/v2', apiRoutes);
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'static/html/simulation.html'));
