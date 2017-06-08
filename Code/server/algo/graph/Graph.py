@@ -84,7 +84,7 @@ class Graph(nx.DiGraph):
     self.all_sp_len = graph['all_sp_len']
     self.all_sp_len_transpose = graph['all_sp_len_transpose']
     self.diam = graph['diam']
-    # print('{"msg":"completed import"}');
+    print('{"msg":"Import Complete"}');
 
   def _max_sp(self):
     return max([max(dists) for dists in self.all_sp_len])

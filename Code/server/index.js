@@ -11,7 +11,7 @@ const appPort = 8080;
 
 app.use(express.static(path.join(__dirname, 'static')));
 
-app.use(bodyParser.json({ limit: '10mb'}));
+app.use(bodyParser.json({ limit: '20mb'}));
 
 app.all('*', (req, res, next) => {
   console.log(`[${req.method}] ${req.path}`);
