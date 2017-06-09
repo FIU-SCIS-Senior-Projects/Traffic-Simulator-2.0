@@ -2073,6 +2073,35 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 let domain = 'http://localhost:8080/';
 let apiUrl = 'api/v2/';
 
+function testDijkstra () {
+  const endpoint = 'path/dijkstra';
+
+  return new Promise((resolve, reject) => {
+    testGeoJsonFormat()
+      .then((adjMatrix) => {
+        let data = adjMatrix;
+        data.source = 15;
+        data.destination = 110;
+        console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
+        __WEBPACK_IMPORTED_MODULE_0_superagent___default.a.post(`${domain}${apiUrl}${endpoint}`)
+          .send(adjMatrix)
+          .end((err, asyncRes) => {
+            if (err) {
+              return reject(err);
+            }
+            const result = JSON.parse(asyncRes.text);
+            console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
+            console.log(result);
+            console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+            return resolve(result);
+          });
+      })
+      .catch((err) => {
+        return reject(err);
+      });
+  });
+}
+
 function testGraphImport (graph) {
   const endpoint = 'graph/import';
 
@@ -2169,7 +2198,24 @@ function getGeoJson () {
 function init () {
   testGraphInit()
     .then((graph) => {
-      testGraphImport(graph);
+      testGraphImport(graph)
+        .then(() => {
+          testDijkstra()
+            .then((path) => {
+              // Results from v1
+              const expect = [15, 16, 22, 69, 71, 78, 80, 109, 108, 116, 110];
+              console.log('Expects:');
+              console.log(expect);
+              console.log('Received:');
+              console.log(path.path);
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        })
+        .catch((err) => {
+          console.log(err);
+        })
     })
     .catch((err) => {
       console.log(err);

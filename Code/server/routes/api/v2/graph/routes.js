@@ -11,6 +11,7 @@ router.post('/', (req, res) => {
       return res.json({ graph: graph });
     })
     .catch((err) => {
+      console.log(err);
       return res.status(500).send(err);
     });
 });
@@ -21,6 +22,7 @@ router.post('/import', (req, res) => {
       return res.json(msg);
     })
     .catch((err) => {
+      console.log(err);
       return res.status(500).send(err);
     });
 });
