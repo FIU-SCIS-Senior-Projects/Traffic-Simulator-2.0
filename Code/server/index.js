@@ -31,7 +31,7 @@ app.use('/test', testRoutes);
 app.use('/api/v2', apiRoutes);
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'static/html/simulation.html'));
+  return res.sendFile(path.join(__dirname, 'static/html/simulation.html'));
 });
 
 app.listen(appPort, () => {
