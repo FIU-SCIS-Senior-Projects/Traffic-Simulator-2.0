@@ -4,12 +4,23 @@ function dijkstra (adjMatrix, source, destination) {
   return new Promise((resolve, reject) => {
     let pyshell = new PythonShell('./server/algo/graph/dijkstra.py');
     let pyResult = null;
-    let data = {
-      adjMatrix: adjMatrix,
-      setup: true,
-      source: source,
-      destination: destination
-    };
+    // let data = {
+    //   adjMatrix: adjMatrix,
+    //   setup: true,
+    //   source: source,
+    //   destination: destination
+    // };
+
+    let data = {};
+
+    // If there is a graph in the session
+    if (req.session.graph) {
+      data.setup = false;
+      data.graph = req.session.graph;
+    } else {
+      // Handle the exception of no initialized graph in session.
+      return reject('Initialized Graph Not Found.');
+    }
 
     pyshell.send(JSON.stringify(data));
 

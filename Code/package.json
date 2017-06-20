@@ -18,6 +18,7 @@
     "body-parser": "^1.17.2",
     "dom-object": "https://github.com/redice44/dom-object.git#v0.0.7",
     "express": "^4.15.3",
+    "express-session": "^1.15.3",
     "python-shell": "^0.4.0",
     "superagent": "^3.5.2"
   },

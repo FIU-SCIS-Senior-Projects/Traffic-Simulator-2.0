@@ -6,9 +6,8 @@ const graphAPI = require('./index');
 router.post('/', (req, res) => {
   graphAPI.initGraph(req.body.adjMatrix)
     .then((graph) => {
-      // put in session
-      // Return a success message instead of the graph.
-      return res.json({ graph: graph });
+      req.session.graph = graph;
+      return res.json({ text: 'Graph Initialized' });
     })
     .catch((err) => {
       console.log(err);
@@ -16,6 +15,7 @@ router.post('/', (req, res) => {
     });
 });
 
+/* Possibly unused route */
 router.post('/import', (req, res) => {
   graphAPI.importGraph(req.body.graph)
     .then((msg) => {
