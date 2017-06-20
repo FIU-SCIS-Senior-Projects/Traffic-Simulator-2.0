@@ -1,25 +1,116 @@
-#map 
-{ 
-	height: 100% 
+#map {
+    height: 100%;
 }
 
-#dropZone 
-{
-	background: gray;
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	z-index: 999;
-	opacity: 0.6;
-	visibility: hidden;
+#dropZone {
+    background: gray;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    opacity: 0.6;
+    visibility: hidden;
 }
 
-.centered
-{
-	position:relative;
-	top:50%;
-	left:50%;
-	transform:translate(-50%,-50%)
+.centered {
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%)
+}
+
+.input_field {
+    margin-top: 50px;
+    width: 70%;
+    margin-left: -15px;
+}
+
+.label_control {
+    width: 70%;
+    margin-top: 200px;
+    margin-left: -15px;
+    text-align: center;
+    background-color: #B6862C;
+    color: #DDDDDD;
+    padding: 7px;
+}
+
+.button_input {
+    width: 70%;
+    margin-left: -15px;
+}
+
+.footer {
+    margin-top: 20px;
+}
+
+.form_group {
+    margin-left: 40px;
+    color: #DDDDDD;
+}
+
+.submit_button {
+    background-color: #B6862C;
+    color: #DDDDDD;
+    padding: 8px;
+    /*width: 100px;*/
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 1s;
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+#wrapper {
+    height: 100%;
+    padding: 0 15px 0 15px;
+    background-color: #081E3F;
+}
+
+@media (min-height: 768px) {
+    ng-map {
+        height: 860px;
+    }
+}
+
+@media (max-height: 768px) {
+    ng-map {
+        height: 560px;
+    }
 }
