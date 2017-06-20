@@ -29,7 +29,7 @@ Download the files
 
 - run your local server on your desired port
 
-	Ex. Type "python -m SimpleHTTPServer" in your cmd line (if osx or linux)
+	Ex. Type "python -m SimpleHTTPServer" for Python version < 3 and "python -m http.server" for Python version 3 or above   in your cmd line (if osx or linux)
 
 - navigate to http://127.0.0.1:port/ in your browser
 
