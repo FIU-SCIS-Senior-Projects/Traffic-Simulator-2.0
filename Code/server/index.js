@@ -12,6 +12,8 @@ const appPort = 8080;
 
 app.use(express.static(path.join(__dirname, 'static')));
 app.use(bodyParser.json({ limit: '20mb'}));
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
 app.use(session({
   secret: 'secret', // temporary for now.
   resave: false,

@@ -1,18 +1,31 @@
-<div>
-    <h5 class="header"> Oblivious map navigation</h5>
-</div>
-<ng-map id="obliviousMap" center="current-position" geo-fallback-center="[25.756, -80.375]">
-    <marker position="current" centered="true"></marker>
-</ng-map>
-<div class="form_group">
-    <label for="algorithm_type" id="algorithm_type" name="algorithm_type" style="margin-top: 8px">Select from the following algorithms</label>
-    <div>
-        <input type="radio" name="dijsktra" id="dijsktra" ng-checked="vm.isDijsktra" ng-click="vm.selectAlgorithm('dijkstra')" />
-        <label for="dijsktra">Dijsktra Algorithm</label>
+<div id="container">
+    <div class="row">
+        <h5 class="header"> Oblivious map navigation</h5>
     </div>
-    <div>
-        <input type="radio" name="oblivious" id="oblivious" ng-checked="vm.isOblivious" ng-click="vm.selectAlgorithm('oblivious')"
-        />
-        <label for="oblivious">Oblivious routing</label>
+    <div class="row">
+        <div class="col-md-12">
+            <ng-map id="obliviousMap" center="25.726,-80.355" zoom="13"></ng-map>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 footer">
+            <button type="button" class="btn submit_button" ng-click="vm.startPathDemo()">Demo</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 footer">
+            <div class="form_group">
+                <label for="algorithm_type" id="algorithm_type" name="algorithm_type">Select from the following algorithms</label>
+                <div>
+                    <input type="radio" name="dijsktra" id="dijsktra" ng-checked="vm.isDijsktra" ng-click="vm.selectAlgorithm('dijkstra')" />
+                    <label for="dijsktra">Dijsktra Algorithm</label>
+                </div>
+                <div>
+                    <input type="radio" name="oblivious" id="oblivious" ng-checked="vm.isOblivious" ng-click="vm.selectAlgorithm('oblivious')"
+                    />
+                    <label for="oblivious">Oblivious routing</label>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
