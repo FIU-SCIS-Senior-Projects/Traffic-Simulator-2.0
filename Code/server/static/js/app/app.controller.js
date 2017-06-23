@@ -13,14 +13,11 @@
             vm.isDijsktra = true;
             vm.isOblivious = false;
             vm.trips = [];
+            vm.positions = [];
 
-            NgMap.getMap("googleMap").then(map => {
-                    vm.googleMap = map;
-                })
-            NgMap.getMap("obliviousMap").then(map => {
-                    vm.obliviousMap = map;
-                });
-        }
+            NgMap.getMap("googleMap").then(map => { vm.googleMap = map;});
+            NgMap.getMap("obliviousMap").then(map => { vm.obliviousMap = map; });
+        };
 
         vm.selectAlgorithm = function (algorithm) {
             switch (algorithm) {
@@ -35,41 +32,105 @@
                 default:
                     break;
             }
-        }
+        };
 
-        vm.addTrip = function () {
+        vm.addTrip = () => {
             
             var trip = {
-                sourceAddress: vm.sourceAddress ? vm.sourceAddress : "current",
-                destAddress: vm.destAddress ? vm.destAddress : "current",
+                origin: vm.origin ? vm.origin : "current-location",
+                destination: vm.destination ? vm.destination : "current-location",
                 startingTime: vm.startingTime ? new Date(vm.startingTime).toLocaleTimeString() : new Date().toLocaleTimeString() 
-            }
+            };
             
             vm.trips.push(trip);
 
+            clearValues();
             printTrips();
+        };
 
-        }
-
-        vm.placeChanged = function () {
+        vm.originChanged = function() {
             var place = this.getPlace();
+            addPosition(place, 0);
             vm.googleMap.setCenter(place.geometry.location);
-        }
+        };
 
-        vm.reset = function () {
+        vm.destChanged = function() {
+            var place = this.getPlace();
+            addPosition(place, 1);
+            vm.googleMap.setCenter(place.geometry.location);
+        };
+
+        vm.reset = () => {
+            clearValues();
             vm.trips = [];
-            $("#userInput").val('');
-        }
+            vm.userInput1 = "";
+            vm.userInput2 = "";
+        };
 
         function printTrips() {
-            var text = "";
+            vm.userInput1 = "";
 
             vm.trips.forEach(element =>{
-               text = text.concat(`${element["sourceAddress"]}; ${element["destAddress"]}; ${element["startingTime"]}\r\n`);
+               vm.userInput1 = vm.userInput1.concat(`${element["origin"]}\r\n${element["destination"]}\r\n${element["startingTime"]}\r\n`);
             });
 
-            $("#userInput").val(text);
+            // vm.userInput1 = angular.copy(text);
         }
-    }
 
+        function clearValues() {
+            vm.origin = "";
+            vm.destination = "";
+            vm.startingTime = null;
+            vm.positions = angular.copy([]);
+        }
+
+        function addPosition(place, index) {
+            var pos = {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+                title: place.formatted_address.includes(place.name) ? place.formatted_address : `${place["name"]}\r\n${place["formatted_address"]}`   
+            };
+
+            vm.positions[index] = pos;
+        }
+
+        vm.addTrip2 = function() {
+            var lines = vm.userInput2 ? vm.userInput2.split(/\r?\n/g) : [];
+
+            if (lines) {
+                for (var index = 0; index < lines.length;) {
+                    var trip = {
+                        origin: lines[index] ? lines[index++].trim() : "current-location",
+                        destination: lines[index] ? lines[index++].trim() : "current-location",
+                        startingTime: lines[index] ? lines[index++].trim() : new Date().toLocaleTimeString()
+                    };
+
+                    vm.trips.push(trip);
+                }
+                clearValues();
+                printTrips();
+            }
+        };
+
+        vm.addLinesToInput2 = function(){
+            vm.reset();
+            vm.userInput2 = `current-location
+            Dolphin Mall, Miami-Dade County, FL, United States
+            2:00:57 AM
+            Miami International Airport, Miami, FL, United States
+            Best Buy, Northwest 17th Street, Miami, FL, United States
+            12:15:00 PM
+            current-location
+            Dolphin Mall, Miami-Dade County, FL, United States
+            2:00:57 AM
+            Miami International Airport, Miami, FL, United States
+            Best Buy, Northwest 17th Street, Miami, FL, United States
+            12:15:00 PM
+            FIU, Miami, FL, United States
+            Real Cafe, Southwest 8th Street, Miami, FL, United States
+            2:03:36 AM
+            `;
+        };
+
+    }
 })();

@@ -1,3 +1,7 @@
+body{
+    background-color: #081E3F !important;
+}
+
 #map {
     height: 100%;
 }
@@ -43,7 +47,13 @@
 }
 
 .footer {
-    margin-top: 20px;
+    margin-top: 34px;
+}
+
+.header{
+    margin-top: 10px;
+    color: #DDDDDD;
+    text-align: center;
 }
 
 .form_group {
@@ -100,17 +110,16 @@
 #wrapper {
     height: 100%;
     padding: 0 15px 0 15px;
-    background-color: #081E3F;
 }
 
 @media (min-height: 768px) {
     ng-map {
-        height: 860px;
+        height: 820px;
     }
 }
 
 @media (max-height: 768px) {
     ng-map {
-        height: 560px;
+        height: 510px;
     }
 }

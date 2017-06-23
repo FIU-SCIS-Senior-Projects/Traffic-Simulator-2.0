@@ -1,8 +1,11 @@
+<div>
+    <h5 class="header"> Oblivious map navigation</h5>
+</div>
 <ng-map id="obliviousMap" center="current-position" geo-fallback-center="[25.756, -80.375]">
     <marker position="current" centered="true"></marker>
 </ng-map>
 <div class="form_group">
-    <label for="algorithm_type" id="algorithm_type" name="algorithm_type">Select from the following algorithms</label>
+    <label for="algorithm_type" id="algorithm_type" name="algorithm_type" style="margin-top: 8px">Select from the following algorithms</label>
     <div>
         <input type="radio" name="dijsktra" id="dijsktra" ng-checked="vm.isDijsktra" ng-click="vm.selectAlgorithm('dijkstra')" />
         <label for="dijsktra">Dijsktra Algorithm</label>

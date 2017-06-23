@@ -5,7 +5,7 @@
         .module('app', [
             /* Angular modules */
             'ui.router',
-            'ngMap'
+            'ngMap',
             // 'ui.bootstrap'
         ]);
 

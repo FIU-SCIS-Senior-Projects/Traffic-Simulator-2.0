@@ -1,12 +1,21 @@
+<div>
+    <h5 class="header"> Google map navigation</h5>
+</div>
 <ng-map id="googleMap" center="current-position" geo-fallback-center="[25.756, -80.375]">
+    
     <div ng-repeat="item in vm.trips">
         <directions
-          draggable="true"
+          draggable="false"
           travel-mode="DRIVING"
-          origin="{{item.sourceAddress}}"
-          destination="{{item.destAddress}}">
+          origin="{{item.origin}}"
+          destination="{{item.destination}}">
         </directions>
     </div>
+
+    <div ng-repeat="pos in vm.positions">
+        <marker position="{{pos.lat}}, {{pos.lng}}" title="{{pos.title}}"></marker>
+    </div>
+
 </ng-map>
 <div class="footer">
     <button type="button" class="btn submit_button" ng-click="vm.reset()">Reset</button>

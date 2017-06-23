@@ -1,20 +1,21 @@
 <form name="inputForm" id="inputForm" class="form-horizontal">
     <div class="footer">
-        <input places-auto-complete class="form-control" on-place-changed="vm.placeChanged()" placeholder="Source Address..." ng-model="vm.sourceAddress"
-        />
-        <input places-auto-complete class="form-control" on-place-changed="vm.placeChanged()" placeholder="Destination Address..."
-            ng-model="vm.destAddress" />
-        <input type="date" placeholder="Starting Time..." ng-model="vm.startingTime" class="form-control" />
+        <input places-auto-complete class="form-control" on-place-changed="vm.originChanged()" placeholder="Origin..." ng-model="vm.origin" />
+        <input places-auto-complete class="form-control" on-place-changed="vm.destChanged()" placeholder="Destination..." ng-model="vm.destination"/>
 
-        <textarea rows="6" class="form-control" id="userInput" name="userInput" ng-model="tripInput.userInput" placeholder=""></textarea>
-        <div class="footer">
-            <button type="button" class="btn submit_button" ng-click="vm.addTrip()">Submit</button>
-        </div>
-        <div class="footer">
-        <textarea rows="6" class="form-control" id="userInput2" name="userInput2" ng-model="tripInput.userInput2" placeholder=""></textarea>
-        </div>
-        <div class="footer">
-            <button type="button" class="btn submit_button" ng-click="vm.addTrip()">Submit</button>
-        </div>
+        <input type="time" placeholder="Starting Time..." ng-model="vm.startingTime" class="form-control" />
+        <textarea rows="6" class="form-control" id="userInput" name="userInput" ng-model="vm.userInput1" placeholder=""></textarea>
+    </div>
+
+    <div class="footer">
+        <button type="button" class="btn submit_button" ng-click="vm.addTrip()">Submit</button>
+    </div>
+
+    <div class="footer">
+        <textarea rows="6" class="form-control" id="userInput2" name="userInput2" ng-model="vm.userInput2" placeholder=""></textarea>
+    </div>
+    <div class="footer">
+        <button type="button" class="btn submit_button" ng-click="vm.addTrip2()">Submit</button>
+        <button type="button" class="btn submit_button" ng-click="vm.addLinesToInput2()">Add Text</button>
     </div>
 </form>
