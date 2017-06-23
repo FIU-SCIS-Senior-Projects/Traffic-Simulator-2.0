@@ -11,4 +11,8 @@ router.post('/', (req, res) => {
   res.json({ msg: 'success' });
 });
 
+router.get('/map', (req, res) => {
+  return res.render('test');
+});
+
 module.exports = router;

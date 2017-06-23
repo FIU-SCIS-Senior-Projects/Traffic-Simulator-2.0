@@ -17,8 +17,23 @@
             NgMap.getMap("googleMap").then(map => {
                     vm.googleMap = map;
                 })
+                .catch((err) => {
+                    console.log('google map error', err);
+                });
             NgMap.getMap("obliviousMap").then(map => {
                     vm.obliviousMap = map;
+                    let testMarker = { lat: 25.756,  lng: -80.375 };
+                    var marker = new google.maps.Marker({
+                      position: testMarker,
+                      map: vm.obliviousMap
+                    });
+                    console.log('obliviousMap', vm.obliviousMap);
+                    vm.obliviousMap.data.toGeoJson((geoJson) => {
+                        console.log('geojson', geoJson);
+                    });
+                })
+                .catch((err) => {
+                    console.log('oblivious map error', err);
                 });
         }
 
