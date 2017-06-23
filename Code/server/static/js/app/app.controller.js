@@ -8,17 +8,6 @@
     MainCtrl.$inject = ["$scope", "NgMap"];
     function MainCtrl($scope, NgMap) {
         var vm = this;
-        let adjMatrix = [
-          { lat: 25.761363311366857, lng: -80.36850929260254 }, 
-          { lat: 25.761556561592343, lng: -80.36044120788574 }, 
-          { lat: 25.761633861594447, lng: -80.35241603851318 }, 
-          { lat: 25.75413552707459, lng: -80.36816596984863 }, 
-          { lat: 25.754290136690642, lng: -80.3600549697876 }, 
-          { lat: 25.754406093770605, lng: -80.35181522369385 }, 
-          { lat: 25.746714028822527, lng: -80.36773681640625 }, 
-          { lat: 25.746907302886346, lng: -80.35971164703369 }, 
-          { lat: 25.74717788604743, lng: -80.3516435623169 }, 
-        ];
         const vertices = {
             72: {
               117: { lat: 25.700705862862723, lng: -80.38221001625061 }, // 72 and 117
@@ -85,92 +74,7 @@
                 });
             NgMap.getMap("obliviousMap").then(map => {
                     vm.obliviousMap = map;
-                    
-                    let sets = [
-                        {
-                            start: vertices[72][117],
-                            path: [
-                                vertices[56][117], 
-                                vertices[48][117], 
-                                vertices[40][117], 
-                                vertices[40][107], 
-                                vertices[24][107], 
-                                vertices[24][102], 
-                                vertices[24][97], 
-                                vertices[8][97], 
-                                vertices[8][92], 
-                                vertices[8][87]
-                            ]
-                        },
-                        {
-                            start: vertices[72][117],
-                            path: [
-                                vertices[72][107], 
-                                vertices[72][102], 
-                                vertices[72][97], 
-                                vertices[56][97], 
-                                vertices[48][97], 
-                                vertices[40][97], 
-                                vertices[40][92], 
-                                vertices[24][92], 
-                                vertices[24][87], 
-                                vertices[8][87]
-                            ]
-                        },
-                        {
-                            start: vertices[72][117],
-                            path: [
-                                vertices[72][107], 
-                                vertices[72][102], 
-                                vertices[72][97], 
-                                vertices[72][92], 
-                                vertices[72][87], 
-                                vertices[56][87], 
-                                vertices[48][87], 
-                                vertices[40][87], 
-                                vertices[24][87], 
-                                vertices[8][87]
-                            ]
-                        },
-                        {
-                            start: vertices[72][117],
-                            path: [
-                                vertices[72][107], 
-                                vertices[56][107], 
-                                vertices[56][102], 
-                                vertices[48][102], 
-                                vertices[48][97], 
-                                vertices[48][92], 
-                                vertices[40][92], 
-                                vertices[24][92], 
-                                vertices[24][87], 
-                                vertices[8][87]
-                            ]
-                        },
-                        {
-                            start: vertices[72][117],
-                            path: [
-                                vertices[56][117], 
-                                vertices[40][117], 
-                                vertices[40][102], 
-                                vertices[24][102], 
-                                vertices[24][97], 
-                                vertices[24][92], 
-                                vertices[8][92], 
-                                vertices[8][87]
-                            ]
-                        },
-                      ];
-                      let duration = 1000;
-                      let numCars = 20;
-                      
-                      // for (var set = 0; set < sets.length; set++) {
-                        for (var i = 0; i < numCars; i++) {
-                          let set = Math.floor(Math.random() * sets.length);
-                          let car = new Car(map, sets[set].start, sets[set].path);
-                          setTimeout(car.start.bind(car), 2000 * (i + 1), duration);
-                        }
-                      // }
+
                 })
                 .catch((err) => {
                     console.log('oblivious map error', err);
@@ -216,6 +120,93 @@
             $("#userInput").val('');
         }
 
+        vm.startPathDemo = function () {
+            let sets = [
+                    {
+                        start: vertices[72][117],
+                        path: [
+                            vertices[56][117], 
+                            vertices[48][117], 
+                            vertices[40][117], 
+                            vertices[40][107], 
+                            vertices[24][107], 
+                            vertices[24][102], 
+                            vertices[24][97], 
+                            vertices[8][97], 
+                            vertices[8][92], 
+                            vertices[8][87]
+                        ]
+                    },
+                    {
+                        start: vertices[72][117],
+                        path: [
+                            vertices[72][107], 
+                            vertices[72][102], 
+                            vertices[72][97], 
+                            vertices[56][97], 
+                            vertices[48][97], 
+                            vertices[40][97], 
+                            vertices[40][92], 
+                            vertices[24][92], 
+                            vertices[24][87], 
+                            vertices[8][87]
+                        ]
+                    },
+                    {
+                        start: vertices[72][117],
+                        path: [
+                            vertices[72][107], 
+                            vertices[72][102], 
+                            vertices[72][97], 
+                            vertices[72][92], 
+                            vertices[72][87], 
+                            vertices[56][87], 
+                            vertices[48][87], 
+                            vertices[40][87], 
+                            vertices[24][87], 
+                            vertices[8][87]
+                        ]
+                    },
+                    {
+                        start: vertices[72][117],
+                        path: [
+                            vertices[72][107], 
+                            vertices[56][107], 
+                            vertices[56][102], 
+                            vertices[48][102], 
+                            vertices[48][97], 
+                            vertices[48][92], 
+                            vertices[40][92], 
+                            vertices[24][92], 
+                            vertices[24][87], 
+                            vertices[8][87]
+                        ]
+                    },
+                    {
+                        start: vertices[72][117],
+                        path: [
+                            vertices[56][117], 
+                            vertices[40][117], 
+                            vertices[40][102], 
+                            vertices[24][102], 
+                            vertices[24][97], 
+                            vertices[24][92], 
+                            vertices[8][92], 
+                            vertices[8][87]
+                        ]
+                    },
+                ];
+
+              let duration = 1000;
+              let numCars = 20;
+              
+                for (var i = 0; i < numCars; i++) {
+                    let set = Math.floor(Math.random() * sets.length);
+                    let car = new Car(vm.obliviousMap, sets[set].start, sets[set].path);
+                    setTimeout(car.start.bind(car), 2000 * (i + 1), duration);
+                }
+        }
+
         function printTrips() {
             var text = "";
 
@@ -225,12 +216,15 @@
 
             $("#userInput").val(text);
         }
+
+        /* Car Class */
         function Car (map, start, path) {
           this.map = map;
           this.delay = 10; // ms
           this.path = path;
           this.position = Object.assign({}, start);
 
+          // Create the marker, but do not place it on the map
           this.marker = new google.maps.Marker({
               position: start,
               map: null
@@ -240,8 +234,6 @@
         Car.prototype.start = function (duration) {
           this.marker.setMap(this.map);
           for (var i = 0; i < this.path.length; i++) {
-            // console.log(`adjMatrix index: ${this.path[i]}`);
-            // console.log(adjMatrix[this.path[i]]);
             setTimeout(this.move.bind(this), duration * (i + 1), this.path[i], duration, i)
           }
           setTimeout(this.hide.bind(this), duration * (i + 2));
@@ -253,16 +245,11 @@
 
         Car.prototype.move = function (destination, duration, index) {
           let delta = {};
-          // console.log(`move: ${index}`);
-          // console.log('pos', this.position);
-          // console.log('dest', destination, adjMatrix[destination]);
 
-          // destination = adjMatrix[destination];
           delta.num = Math.floor(duration / this.delay);
           delta.lat = (destination.lat - this.position.lat) / delta.num;
           delta.lng = (destination.lng - this.position.lng) / delta.num;
-          // console.log('delta', delta);
-          // console.log(index, adjMatrix);
+
           this.animate(delta);
         };
 
