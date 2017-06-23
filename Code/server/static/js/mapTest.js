@@ -13,7 +13,7 @@ let adjMatrix = [
   { lat: 25.74717788604743, lng: -80.3516435623169 }, 
 ];
 // let position = grid[0];
-console.log(adjMatrix);
+// console.log(adjMatrix);
 function initMap() {
   let fiu = { lat: 25.756, lng: -80.375 };
   map = new google.maps.Map(document.getElementById('map'), {
@@ -40,13 +40,9 @@ function initMap() {
       start: 8
     }
   ];
-  // let path = [2, 5, 4, 7, 6, 3, 0, 1];
-  // let start = adjMatrix[1];
   let duration = 1000;
-  
-  // let car = new Car(map, adjMatrix[1], [2, 5, 4, 7, 6, 3, 0, 1]);
-  // setTimeout(car.start.bind(car), 2000, duration);
   let numCars = 5;
+
   for (var set = 0; set < 3; set++) {
     for (var i = 0; i < numCars; i++) {
       let car = new Car(map, adjMatrix[sets[set].start], sets[set].path);
@@ -57,7 +53,7 @@ function initMap() {
   google.maps.event.addListener(map, 'click', function(me) {
     // var result = { lat: me.latLng.lat(), lng: me.latLng.lng() };
     // transition(result, 1000);
-    console.log(`lat: ${me.latLng.lat()}, lng: ${me.latLng.lng()}`);
+    console.log(`{ lat: ${me.latLng.lat()}, lng: ${me.latLng.lng()} },`);
   });
 }
 
@@ -99,7 +95,7 @@ Car.prototype.move = function (destination, duration, index) {
   delta.lat = (destination.lat - this.position.lat) / delta.num;
   delta.lng = (destination.lng - this.position.lng) / delta.num;
   // console.log('delta', delta);
-  console.log(index, adjMatrix);
+  // console.log(index, adjMatrix);
   this.animate(delta);
 };
 
