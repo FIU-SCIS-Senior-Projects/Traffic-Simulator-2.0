@@ -16,38 +16,52 @@ function initMap() {
     zoom: 15
   });
 
+  map.data.setStyle({
+    strokeColor: '#FF0000',
+    strokeWeight: 2
+  });
+
   document.getElementById('add-geojson').addEventListener('click', (event) => {
     // Adds geojson to the map. No checking. Assumes it's valid. 
-    map.data.addGeoJson(JSON.parse(document.getElementById('input-geojson').value));
+    geojson = JSON.parse(document.getElementById('input-geojson').value);
+    // console.log('adding', geojson);
+    map.data.addGeoJson(geojson);
+        map.data.setStyle({
+      strokeColor: '#FF0000',
+      strokeWeight: 2
+    });
+    // map.data.toGeoJson((data) => {
+    //   console.log('added geo to google', data);
+    // });
+  });
+
+  document.getElementById('set-geojson').addEventListener('click', (event) => {
+    startPoint = null;
+    endPoint = null;
+    pathPolyLine.setPath([]);
+    map.data.forEach((feature) => {
+      map.data.remove(feature);
+    });
+
+    map.data.addGeoJson(geojson);
+    map.data.toGeoJson((data) => {
+      let updatedGeojson = JSON.stringify(data);
+      document.getElementById('output-geojson').value = updatedGeojson;
+      let blob = new Blob([updatedGeojson], {type: 'application/json'});
+      let url = URL.createObjectURL(blob);
+      document.getElementById('save-geojson').href = url;
+      // console.log(data);
+    });
   });
 
   google.maps.event.addListener(map, 'click', function(me) {
     if (!startPoint) {
       // First click
       startPoint = { lng: me.latLng.lng(), lat: me.latLng.lat() };
+      startPoint = snapVertex(startPoint);
     } else {
       endPoint = { lng: me.latLng.lng(), lat: me.latLng.lat() };
-      // check to see if this is "near" any other vertex and "snap" to it instead
-      let updated = false;
-      let i = 0;
-      let j = 0;
-
-      while (i < geojson.features.length && !updated) {
-        let coords = geojson.features[i].geometry.coordinates;
-        while (j < coords.length && !updated) {
-          // 0: lng, 1: lat
-          let deltaLng = Math.abs(coords[j][0] - endPoint.lng);
-          let deltaLat = Math.abs(coords[j][1] - endPoint.lat);
-          if (deltaLng < epsilon && deltaLat < epsilon) {
-            // Close enough to be the same vertex
-            endPoint = { lng: coords[j][0], lat: coords[j][1] };
-            console.log('Snapped vertex');
-            updated = true;
-          }
-          j++;
-        }
-        i++;
-      }
+      endPoint = snapVertex(endPoint);
 
       pathPolyLine = new google.maps.Polyline({
         map: map,
@@ -73,20 +87,6 @@ function initMap() {
         ]);
       }
       geojson.features.push(polylineFeature);
-      pathPolyLine.setPath([]);
-      map.data.addGeoJson(geojson);
-      map.data.setStyle({
-        strokeColor: '#FF0000',
-        strokeWeight: 2
-      });
-      map.data.toGeoJson((data) => {
-        let updatedGeojson = JSON.stringify(data);
-        document.getElementById('output-geojson').value = updatedGeojson;
-        let blob = new Blob([updatedGeojson], {type: 'application/json'});
-        let url = URL.createObjectURL(blob);
-        document.getElementById('save-geojson').href = url;
-        console.log(data);
-      });
       startPoint = { lng: me.latLng.lng(), lat: me.latLng.lat() };
       // endPoint = null;
     }
@@ -96,6 +96,33 @@ function initMap() {
   });
 }
 
+
+function snapVertex (point) {
+  // check to see if this is "near" any other vertex and "snap" to it instead
+  let updated = false;
+  let i = 0;
+  let j = 0;
+
+  while (i < geojson.features.length && !updated) {
+    let coords = geojson.features[i].geometry.coordinates;
+    j = 0;
+    while (j < coords.length && !updated) {
+      // 0: lng, 1: lat
+      let deltaLng = Math.abs(coords[j][0] - point.lng);
+      let deltaLat = Math.abs(coords[j][1] - point.lat);
+      if (deltaLng < epsilon && deltaLat < epsilon) {
+        // Close enough to be the same vertex
+        point = { lng: coords[j][0], lat: coords[j][1] };
+        console.log('Snapped vertex');
+        updated = true;
+      }
+      j++;
+    }
+    i++;
+  }
+
+  return point;
+}
 
 
 /* Car Class */
