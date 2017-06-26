@@ -3,6 +3,13 @@ html
   head
     link(rel='stylesheet', href='/css/map.css', type='text/css')
   body
-    #map
+    #container
+      #map
+      #data
+        textarea(placeholder="Input")#input-geojson
+        textarea(placeholder="Output")#output-geojson
+        div
+          button#add-geojson Add GeoJson
+          a#save-geojson(download="roads.geojson" href="#") Save GeoJson
     script(src='/js/mapTest.js')
     script(src='https://maps.googleapis.com/maps/api/js?key=AIzaSyCCQu2lSuWf7Did9x789vfqz1C0plsWcys&callback=initMap')
