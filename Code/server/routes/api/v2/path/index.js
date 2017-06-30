@@ -1,6 +1,6 @@
 const PythonShell = require('python-shell');
 
-function dijkstra (adjMatrix, source, destination) {
+function dijkstra (session, source, destination) {
   return new Promise((resolve, reject) => {
     let pyshell = new PythonShell('./server/algo/graph/dijkstra.py');
     let pyResult = null;
@@ -14,9 +14,11 @@ function dijkstra (adjMatrix, source, destination) {
     let data = {};
 
     // If there is a graph in the session
-    if (req.session.graph) {
+    if (session.graph) {
       data.setup = false;
-      data.graph = req.session.graph;
+      data.graph = session.graph;
+      data.source = source;
+      data.destination = destination;
     } else {
       // Handle the exception of no initialized graph in session.
       return reject('Initialized Graph Not Found.');
@@ -36,6 +38,7 @@ function dijkstra (adjMatrix, source, destination) {
 
       console.log('Dijkstra: Finished');
       // For some reason only even values matter.
+      console.log(pyResult);
       pyResult = pyResult.filter((point, i) => {
         return i % 2 === 0;
       });

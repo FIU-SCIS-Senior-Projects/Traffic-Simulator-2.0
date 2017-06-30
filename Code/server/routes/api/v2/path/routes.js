@@ -5,8 +5,8 @@ const pathAPI = require('./index');
 
 router.post('/dijkstra', (req, res) => {
   // Later use graph from session, but for now init a new one. 
-  // pathAPI.dijkstra(req.body.adjMatrix, req.body.source, req.body.destination)
-  pathAPI.dijkstra()
+  pathAPI.dijkstra(req.session, req.body.source, req.body.destination)
+  // pathAPI.dijkstra()
     .then((path) => {
       return res.json({ path: path });
     })

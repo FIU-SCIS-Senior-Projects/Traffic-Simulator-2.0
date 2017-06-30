@@ -3,9 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <title>Test Page</title>
+  <style>
+  html, body, #map {
+    height: 100%;
+  }
+  </style>
 </head>
 <body>
-  <div id="results"></div>
-  <script src="./js/test.js"></script>
+  <div id="map"></div>
+  <script>
+  var map;
+  function initMap() {
+    let fiu = { lat: 25.756, lng: -80.375 };
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: fiu,
+      zoom: 15
+    });
+  }
+  </script>
+  <script src="/js/test.js"></script>
+  <script src='https://maps.googleapis.com/maps/api/js?key=AIzaSyCCQu2lSuWf7Did9x789vfqz1C0plsWcys&callback=initMap'></script>
 </body>
 </html>

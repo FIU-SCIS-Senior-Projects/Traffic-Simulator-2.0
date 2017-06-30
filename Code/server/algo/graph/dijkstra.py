@@ -24,6 +24,7 @@ def main():
   else:
     g = Graph(matrix=None, needSetup=False)
     g.importJson(data['graph'])
+    print(str(g.get_dijkstra_scheme(source=data['source'], destination=data['destination'])))
 
   # print('Graph Created')
   # except EmptyMatrixProvided:

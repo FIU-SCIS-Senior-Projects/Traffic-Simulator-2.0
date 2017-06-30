@@ -2,10 +2,15 @@ const express = require('express');
 const router = express.Router();
 
 const geoAPI = require('./index');
-const geojson = require('../../../../data/big_geo.js');
+const oldGeojson = require('../../../../data/big_geo.js');
+const roadsGeojson = require('../../../../data/roads.js');
 
-router.get('/', (req, res) => {
-  return res.json({ geojson: geojson });
+router.get('/old', (req, res) => {
+  return res.json({ geojson: oldGeojson });
+});
+
+router.get('/roads', (req, res) => {
+  return res.json({ geojson: roadsGeojson });
 });
 
 router.post('/', (req, res) => {
