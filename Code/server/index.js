@@ -11,6 +11,7 @@ const testRoutes = require('./routes/test');
 const appPort = 8080;
 
 app.use(express.static(path.join(__dirname, 'static')));
+app.use(express.static('./client/app'));
 app.use(bodyParser.json({ limit: '20mb'}));
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
@@ -33,7 +34,7 @@ app.use('/test', testRoutes);
 app.use('/api/v2', apiRoutes);
 
 app.get('/', (req, res) => {
-  return res.sendFile(path.join(__dirname, 'static/html/index.html'));
+  return res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
 app.listen(appPort, () => {
