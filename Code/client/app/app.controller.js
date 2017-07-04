@@ -1,6 +1,8 @@
 
 (function () {
     'use strict';
+    let domain = 'http://localhost:8080/';
+    let apiUrl = 'api/v2/';
 
     angular
         .module("app")
@@ -217,145 +219,122 @@
         };
 
         vm.startPathDemo = function () {
-            let sets = [
-                    {
-                        start: vertices[72][117],
-                        path: [
-                            vertices[56][117], 
-                            vertices[48][117], 
-                            vertices[40][117], 
-                            vertices[40][107], 
-                            vertices[24][107], 
-                            vertices[24][102], 
-                            vertices[24][97], 
-                            vertices[8][97], 
-                            vertices[8][92], 
-                            vertices[8][87]
-                        ]
-                    },
-                    {
-                        start: vertices[72][117],
-                        path: [
-                            vertices[72][107], 
-                            vertices[72][102], 
-                            vertices[72][97], 
-                            vertices[56][97], 
-                            vertices[48][97], 
-                            vertices[40][97], 
-                            vertices[40][92], 
-                            vertices[24][92], 
-                            vertices[24][87], 
-                            vertices[8][87]
-                        ]
-                    },
-                    {
-                        start: vertices[72][117],
-                        path: [
-                            vertices[72][107], 
-                            vertices[72][102], 
-                            vertices[72][97], 
-                            vertices[72][92], 
-                            vertices[72][87], 
-                            vertices[56][87], 
-                            vertices[48][87], 
-                            vertices[40][87], 
-                            vertices[24][87], 
-                            vertices[8][87]
-                        ]
-                    },
-                    {
-                        start: vertices[72][117],
-                        path: [
-                            vertices[72][107], 
-                            vertices[56][107], 
-                            vertices[56][102], 
-                            vertices[48][102], 
-                            vertices[48][97], 
-                            vertices[48][92], 
-                            vertices[40][92], 
-                            vertices[24][92], 
-                            vertices[24][87], 
-                            vertices[8][87]
-                        ]
-                    },
-                    {
-                        start: vertices[72][117],
-                        path: [
-                            vertices[56][117], 
-                            vertices[40][117], 
-                            vertices[40][102], 
-                            vertices[24][102], 
-                            vertices[24][97], 
-                            vertices[24][92], 
-                            vertices[8][92], 
-                            vertices[8][87]
-                        ]
-                    },
-                ];
+          testGraphInit()
+            .then((graph) => {
+              testDijkstra()
+                .then((path) => {
+                  let cars = [];
+                  let numCars = 10;
+                  let delay = 2000;
+                  let interval = 1000;
 
-              let duration = 1000;
-              let numCars = 20;
-              
-                for (var i = 0; i < numCars; i++) {
-                    let set = Math.floor(Math.random() * sets.length);
-                    let car = new Car(vm.obliviousMap, sets[set].start, sets[set].path);
-                    setTimeout(car.start.bind(car), 2000 * (i + 1), duration);
-                }
+                  for (let i = 0; i < numCars; i++) {
+                    cars.push(new Car(vm.obliviousMap, path.path[0], path.path));
+                    setTimeout(cars[i].start.bind(cars[i]), delay * i, interval);
+                  }
+                })
+                .catch((err) => {
+                  console.log(err);
+                });
+            })
+            .catch((err) => {
+              console.log(err);
+            });
         };
+    }
+    
+    function testDijkstra () {
+      const endpoint = 'path/dijkstra';
 
-        const vertices = {
-            72: {
-              117: { lat: 25.700705862862723, lng: -80.38221001625061 }, // 72 and 117
-              107: { lat: 25.701092560247425, lng: -80.36617040634155 }, // 72 and 107
-              102: { lat: 25.70133424547502, lng: -80.35815596580505 }, // 72 and 102
-              97: { lat: 25.701638768163157, lng: -80.35014152526855 }, // 72 and 97
-              92: { lat: 25.70198679313858, lng: -80.34214317798615 }, // 72 and 92
-              87: { lat: 25.702325149778112, lng: -80.33416628837585 }, // 72 and 87
-            },
-            56: {
-              117: { lat: 25.714858168713896, lng: -80.38261234760284 }, // 56 and 117
-              112: { lat: 25.715157823660345, lng: -80.37494659423828 }, // 56 and 112
-              107: { lat: 25.71542847909229, lng: -80.36690533161163 }, // 56 and 107
-              102: { lat: 25.71578612996864, lng: -80.3589016199112 }, // 56 and 102
-              97: { lat: 25.716129280474455, lng: -80.35089254379272 }, // 56  and 97
-              92: { lat: 25.71634193662917, lng: -80.3429263830185 }, // 56 and 92
-              87: { lat: 25.71672375013484, lng: -80.3349494934082 }, // 56 and 87
-            },
-            48: {
-              117: { lat: 25.72289059346016, lng: -80.38289666175842 }, // 48 and 117
-              112: { lat: 25.723025912455956, lng: -80.37532210350037 }, // 47 and 112
-              107: { lat: 25.722702113173753, lng: -80.36729156970978 }, // 48 and 107
-              102: { lat: 25.723054909363604, lng: -80.35928249359131 }, // 48 and 102
-              97: { lat: 25.723349710856606, lng: -80.35127341747284 }, // 48 and 97
-              92: { lat: 25.724557906062127, lng: -80.34434258937836 }, // 48 and 92
-              87: { lat: 25.724050465570826, lng: -80.3353089094162 }, // 48 and 87
-            },
-            40: {
-              117: { lat: 25.732043609897783, lng: -80.38329362869263 }, // 40 and 117
-              112: { lat: 25.732193415816226, lng: -80.37572979927063 }, // 40 and 112
-              107: { lat: 25.73231905934415, lng: -80.36778509616852 }, // 40 and 107
-              102: { lat: 25.73249302708671, lng: -80.35975992679596 }, // 40 and 102
-              97: { lat: 25.73269598913126, lng: -80.3517347574234 }, // 40 and 97
-              92: { lat: 25.732927945329294, lng: -80.34373104572296 }, // 40 and 92
-              87: { lat: 25.733087414952895, lng: -80.33583998680115 }, // 40 and 87
-            },
-            24: {
-              117: { lat: 25.746356470975563, lng: -80.38389444351196 }, // 24 and 117
-              112: { lat: 25.74653041817067, lng: -80.37596583366394 }, // 26 and 112
-              107: { lat: 25.74670919696691, lng: -80.36771535873413 }, // 24 and 107
-              102: { lat: 25.746974948734394, lng: -80.35969018936157 }, // 26 and  102
-              97: { lat: 25.747216540734435, lng: -80.35166501998901 }, // 26 and 97
-              92: { lat: 25.747429141288062, lng: -80.3436827659607 }, // 26 and 92
-              87: { lat: 25.747656236913734, lng: -80.3356683254242 }, // 24 and 87
-            },
-            8: {
-              107: { lat: 25.761295673713622, lng: -80.36842346191406 }, // 8 and 107
-              102: { lat: 25.761479261539883, lng: -80.36040902137756 }, // 8 and 102
-              97: { lat: 25.76162903034578, lng: -80.352383852005 }, // 8 and 97
-              92: { lat: 25.761788461447694, lng: -80.34416019916534 }, // 8 and 92
-              87: { lat: 25.761933398627274, lng: -80.33619403839111 }, // 8 and 87
+      return new Promise((resolve, reject) => {
+        let data = {};
+        data.source = 15;
+        data.destination = 110;
+        console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
+        request.post(`${domain}${apiUrl}${endpoint}`)
+          .send(data)
+          .end((err, asyncRes) => {
+            if (err) {
+              return reject(err);
             }
-          };
+            const result = JSON.parse(asyncRes.text);
+            console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
+            console.log(result);
+            console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+            return resolve(result);
+          });
+      });
+    }
 
+    function testGraphInit () {
+      const endpoint = 'graph';
+
+      return new Promise((resolve, reject) => {
+        testGeoJsonFormat()
+          .then((adjMatrix) => {
+            console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
+            request.post(`${domain}${apiUrl}${endpoint}`)
+              .send(adjMatrix)
+              .end((err, asyncRes) => {
+                if (err) {
+                  return reject(err);
+                }
+                const result = JSON.parse(asyncRes.text);
+                console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
+                console.log(result);
+                console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+                return resolve(result);
+              });
+          })
+          .catch((err) => {
+            return reject(err);
+          });
+      });
+    }
+
+    function testGeoJsonFormat () {
+      const endpoint = 'geo';
+
+      return new Promise((resolve, reject) => {
+        getGeoJson()
+          .then((geojson) => {
+            console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
+            request.post(`${domain}${apiUrl}${endpoint}`)
+              .send(geojson)
+              .end((err, asyncRes) => {
+                if (err) {
+                  return reject(err);
+                }
+                const result = JSON.parse(asyncRes.text);
+                console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
+                console.log(result);
+                console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+                return resolve(result);
+              });
+          })
+          .catch((err) => {
+            console.log('Error in testGeoJsonFormat', err);
+          });
+      });
+    }
+
+    // Temp endpoint to get geojson data for testing.
+    function getGeoJson () {
+      const endpoint = 'geo/roads';
+
+      return new Promise((resolve, reject) => {
+        console.log(`[GET]: ${apiUrl}${endpoint} - Request`);
+        request.get(`${domain}${apiUrl}${endpoint}`)
+          .end((err, asyncRes) => {
+            if (err) {
+              return reject(err);
+            }
+            const result = JSON.parse(asyncRes.text);
+            console.log(`[GET]: ${apiUrl}${endpoint} - Response`);
+            console.log(result);
+            console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+            return resolve(result);
+          });
+      });
     }
 })();
