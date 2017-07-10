@@ -125,8 +125,7 @@
             clearValues();
             vm.trips = [];
             vm.userInput1 = "";
-            vm.userInput2 = "";
-        };
+        }
 
         function printTrips() {
             vm.userInput1 = "";
@@ -155,21 +154,22 @@
             vm.positions[index] = pos;
         }
 
-        vm.addTrip2 = function() {
-            var lines = vm.userInput2 ? vm.userInput2.split(/\r?\n/g) : [];
-
-            if (lines) {
-                for (var index = 0; index < lines.length;) {
-                    var trip = {
-                        origin: lines[index] ? lines[index++].trim() : "current-location",
-                        destination: lines[index] ? lines[index++].trim() : "current-location",
-                    };
-
-                    vm.trips.push(trip);
-                }
-                clearValues();
-            }
-        };
+        // function for second input
+        // vm.addTrip2 = function() {
+        //     var lines = vm.userInput2 ? vm.userInput2.split(/\r?\n/g) : [];
+        //
+        //     if (lines) {
+        //         for (var index = 0; index < lines.length;) {
+        //             var trip = {
+        //                 origin: lines[index] ? lines[index++].trim() : "current-location",
+        //                 destination: lines[index] ? lines[index++].trim() : "current-location",
+        //             };
+        //
+        //             vm.trips.push(trip);
+        //         }
+        //         clearValues();
+        //     }
+        // };
 
         /* Car Class */
         function Car (map, start, path) {
