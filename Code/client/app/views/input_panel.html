@@ -3,7 +3,7 @@
         <input places-auto-complete class="form-control" on-place-changed="vm.originChanged()" placeholder="Origin..." ng-model="vm.origin" />
         <input places-auto-complete class="form-control" on-place-changed="vm.destChanged()" placeholder="Destination..." ng-model="vm.destination"/>
 
-        <input type="time" placeholder="Starting Time..." ng-model="vm.startingTime" class="form-control" />
+        <input type="number" placeholder="Start Delay" ng-model="vm.startingTime" class="form-control" />
         <textarea rows="6" class="form-control" id="userInput" name="userInput" ng-model="vm.userInput1" placeholder=""></textarea>
     </div>
 
@@ -11,11 +11,11 @@
         <button type="button" class="btn submit_button" ng-click="vm.addTrip()">Submit</button>
     </div>
 
-    <div class="footer">
+<!--     <div class="footer">
         <textarea rows="6" places-auto-complete class="form-control" id="userInput2" name="userInput2" ng-model="vm.userInput2"
                   placeholder="Enter your source address, destination and starting time in 3 different lines"></textarea>
     </div>
     <div class="footer">
         <button type="button" class="btn submit_button" ng-click="vm.addTrip2()">Submit</button>
-    </div>
+    </div> -->
 </form>
