@@ -53,6 +53,7 @@
             var trip = {
                 origin: vm.origin ? vm.origin : "current-location",
                 destination: vm.destination ? vm.destination : "current-location",
+                delay: vm.startingTime ? vm.startingTime : 0
             };
 
             vm.trips.push(trip);
@@ -132,8 +133,8 @@
             vm.userInput1 = "";
 
             vm.trips.forEach(element =>{
-               vm.userInput1 = vm.userInput1.concat(`${element.origin}\r\n${element.destination}\r\n${element.startingTime ? 
-                   element.startingTime : new Date().toLocaleTimeString()}\r\n`);
+               vm.userInput1 = vm.userInput1.concat(`${element.origin}\r\n${element.destination}\r\n${element.delay !== undefined ? 
+                   element.delay : new Date().toLocaleTimeString()}\r\n`);
             })
 
         }
