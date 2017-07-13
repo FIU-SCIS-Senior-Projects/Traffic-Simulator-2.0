@@ -15,8 +15,12 @@
         travelMode: 'DRIVING'
     };
 
-    MainCtrl.$inject = ["$scope", "NgMap"];
-    function MainCtrl($scope, NgMap) {
+    let startingTime = 0;
+    let directionsService = new google.maps.DirectionsService();
+    let directionsDisplay = new google.maps.DirectionsRenderer();
+
+    MainCtrl.$inject = ["$scope", "NgMap", "$interval"];
+    function MainCtrl($scope, NgMap, $interval) {
         var vm = this;
 
         vm.onInit = function () {
@@ -51,39 +55,43 @@
         vm.addTrip = () => {
 
             var trip = {
-                origin: vm.origin ? vm.origin : "current-location",
-                destination: vm.destination ? vm.destination : "current-location",
+                defaultTrip : {
+                    origin: vm.origin ? vm.origin : "current-location",
+                    destination: vm.destination ? vm.destination : "current-location",
+                    optimizeWaypoints: true,
+                    travelMode: 'DRIVING'
+                },
+                interval: vm.startingTime ? vm.startingTime : 0
             };
 
             vm.trips.push(trip);
-            
-            setRoutes(vm.googleMap);
-
-            clearValues();
             printTrips();
-        };
+            clearValues();
+        }
+
+        // function to submit all trips and show routes in the map
+        vm.submit = () => {
+            setRoutes(vm.googleMap);
+        }
 
         function setRoutes(map) {
 
-            let directionsDisplay = new google.maps.DirectionsRenderer();
-            let directionsService = new google.maps.DirectionsService();
-            
-            directionsDisplay.setMap(map);
-
-            vm.trips.forEach(trip => {
-
-                angular.extend(defaultTrip, trip);
-
-                directionsService.route(defaultTrip, (response, status) => {
+            vm.trips.forEach(element => {
+                directionsService.route(element.defaultTrip, (response, status) => {
                     if (status == google.maps.DirectionsStatus.OK) {
-                        directionsDisplay.setDirections(response);
-                        setCarsOnRoute(map, response.routes);
+                    directionsDisplay.setMap(map);
+                    directionsDisplay.setDirections(response);
+                    directionsDisplay = new google.maps.DirectionsRenderer();
+                    startingTime += element.interval;
+                    $interval.cancel();
+                    if(startingTime)
+                        $interval(setCarsOnRoute(map, response.routes), startingTime * 1000);
                     }
                 });
             });
         }
 
-        function setCarsOnRoute(map, routes, numCars = 5) {
+        function setCarsOnRoute(map, routes, numCars = 1) {
             
             routes.forEach(element => {
                 var startingPoint = { 
@@ -96,7 +104,7 @@
                     setTimeout(car.start.bind(car), 2000 * (i + 1), 1000);
                 }
                 
-            });
+            })
         }
 
         function getRoutePath(array){
@@ -131,10 +139,8 @@
             vm.userInput1 = "";
 
             vm.trips.forEach(element =>{
-               vm.userInput1 = vm.userInput1.concat(`${element.origin}\r\n${element.destination}\r\n${element.startingTime ? 
-                   element.startingTime : new Date().toLocaleTimeString()}\r\n`);
-            })
-
+                vm.userInput1 = vm.userInput1.concat(`${element.defaultTrip.origin}\r\n${element.defaultTrip.destination}\r\n${element.interval}\r\n`);
+            });
         }
 
         function clearValues() {
@@ -153,23 +159,6 @@
 
             vm.positions[index] = pos;
         }
-
-        // function for second input
-        // vm.addTrip2 = function() {
-        //     var lines = vm.userInput2 ? vm.userInput2.split(/\r?\n/g) : [];
-        //
-        //     if (lines) {
-        //         for (var index = 0; index < lines.length;) {
-        //             var trip = {
-        //                 origin: lines[index] ? lines[index++].trim() : "current-location",
-        //                 destination: lines[index] ? lines[index++].trim() : "current-location",
-        //             };
-        //
-        //             vm.trips.push(trip);
-        //         }
-        //         clearValues();
-        //     }
-        // };
 
         /* Car Class */
         function Car (map, start, path) {
