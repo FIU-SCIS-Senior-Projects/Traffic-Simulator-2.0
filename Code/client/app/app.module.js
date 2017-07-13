@@ -8,6 +8,7 @@
             /* Angular modules */
             'ui.router',
             'ngMap',
+            // 'autoComplete'
             // 'ui.bootstrap'
         ]);
 })();
