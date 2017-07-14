@@ -20,8 +20,6 @@ let defaultTrip = {
   travelMode: 'DRIVING'
 };
 
-let graphInitialized = false;
-
 MainCtrl.$inject = ["$scope", "NgMap"];
 function MainCtrl($scope, NgMap) {
   var vm = this;
@@ -43,6 +41,7 @@ function MainCtrl($scope, NgMap) {
     vm.isOblivious = false;
     vm.trips = [];
     vm.positions = [];
+    vm.userInput1 = '';
 
     NgMap.getMap("googleMap")
       .then(map => { vm.googleMap = map;})
@@ -55,8 +54,6 @@ function MainCtrl($scope, NgMap) {
         request.post(`${domain}${apiUrl}graph`)
           .end((err, asyncRes) => {
             console.log(asyncRes);
-            graphInitialized = true;
-            // getDijkstraPath()
           });
       })
       .catch(err => { console.log('Error: ', err); });
@@ -78,88 +75,90 @@ function MainCtrl($scope, NgMap) {
   };
 
   vm.addTrip = () => {
-    var trip = {
-      origin: vm.origin ? vm.origin : "current-location",
-      destination: vm.destination ? vm.destination : "current-location",
-      delay: vm.startingTime ? vm.startingTime : 0
-    };
-
-    vm.trips.push(trip);
-    printTrips();
+    vm.userInput1 += `${vm.origin}\n${vm.destination}\nDelay ${vm.startingTime ? vm.startingTime : 0}\n`;
   };
 
+  function parseTrips () {
+    let input = vm.userInput1.split('\n');
+    console.log('inputs', input);
+    let trips = [];
+    for(let i = 0; i < input.length; i+=3) {
+      trips.push({
+        origin: input[i],
+        destination: input[i+1],
+        delay: parseInt(input[i+2].substr(6))
+      });
+    }
+    console.log(trips);
+    return trips;
+  }
+
   vm.getRoutes = () => {
+    // parse input box
+    vm.trips = parseTrips();
 
-    // var trip = {
-    //     origin: vm.origin ? vm.origin : "current-location",
-    //     destination: vm.destination ? vm.destination : "current-location",
-    //     delay: vm.startingTime ? vm.startingTime : 0
-    // };
+    let promises = [];
+    promises.push(getGoogleNavigation());
+    promises.push(getDijkstraPath());
 
-    // vm.trips.push(trip);
-    
-    setRoutes(vm.googleMap);
-    getDijkstraPath()
+    Promise.all(promises)
       .then((data) => {
-        let cars = [];
-        let delay = 2000;
+        console.log('data', data);
+        let googleCars = [];
+        let obliviousCars = [];
+        let delay = 1000;
         let interval = 1000;
-        data.paths.forEach((path) => {
-          cars.push(new Car(vm.obliviousMap, path.path[0], path.path));
-          setTimeout(cars[path.index].start.bind(cars[path.index]), delay * path.index, interval);
+        data[0].forEach((path) => {
+          googleCars.push(new Car(vm.googleMap, path.path[0], path.path));
+          setTimeout(googleCars[path.index].start.bind(googleCars[path.index]), delay * vm.trips[path.index].delay, interval);
+        });
+        data[1].forEach((path) => {
+          obliviousCars.push(new Car(vm.obliviousMap, path.path[0], path.path));
+          setTimeout(obliviousCars[path.index].start.bind(obliviousCars[path.index]), delay * vm.trips[path.index].delay, interval);
         });
         
       })
       .catch((err) => {
         console.log('err', err);
       })
-
-    // clearValues();
-    // printTrips();
   };
 
-  function setRoutes(map) {
-    let directionsDisplay = new google.maps.DirectionsRenderer();
-    let directionsService = new google.maps.DirectionsService();
-    
-    directionsDisplay.setMap(map);
+  function getGoogleNavigation() {
+    return new Promise((resolve, reject) => {
+      let directionsService = new google.maps.DirectionsService();
 
-    vm.trips.forEach(trip => {
-      var foo = Object.assign({}, trip);
-      delete foo.delay;
-      angular.extend(defaultTrip, foo);
+      let promises = vm.trips.map((trip, i) => {
+        var foo = Object.assign({}, trip);
+        foo.optimizeWaypoints = true;
+        foo.travelMode = 'DRIVING';
+        delete foo.delay;
 
-      directionsService.route(defaultTrip, (response, status) => {
-        if (status == google.maps.DirectionsStatus.OK) {
-          // directionsDisplay.setDirections(response);
-          setCarsOnRoute(map, response.routes);
-        }
+        return new Promise((resolve, reject) => {
+          directionsService.route(foo, (response, status) => {
+            if (status == google.maps.DirectionsStatus.OK) {
+              return resolve({ path: convertPath(response.routes[0].overview_path), index: i });
+            } else {
+              return reject(status);
+            }
+          });
+        });
       });
+
+      // Resolve after all routes have been received.
+      Promise.all(promises)
+        .then((paths) => {
+          return resolve(paths);
+        })
+        .catch((err) => {
+          return reject(err);
+        });
     });
   }
 
-  function setCarsOnRoute(map, routes, numCars = 5) {
-    routes.forEach(element => {
-      var startingPoint = { 
-        lat: element.legs[0].start_location.lat(), 
-        lng: element.legs[0].start_location.lng() 
-      };
-      
-      for (var i = 0; i < numCars; i++) {
-        let car = new Car(map, startingPoint, getRoutePath(element.overview_path));
-        setTimeout(car.start.bind(car), 2000 * (i + 1), 1000);
-      }
+  function convertPath (path) {
+    return path.map((point) => {
+      return {lat: point.lat(), lng: point.lng()}
     });
-  }
-
-  function getRoutePath(array){
-    var newArray = [];
-
-    array.forEach(element => {
-      newArray.push({lat: element.lat(), lng: element.lng()});
-    });
-
-    return newArray;
   }
 
   vm.originChanged = function() {
@@ -181,13 +180,13 @@ function MainCtrl($scope, NgMap) {
     vm.userInput2 = "";
   };
 
-  function printTrips() {
-    vm.userInput1 = "";
+  // function printTrips() {
+  //   vm.userInput1 = "";
 
-    vm.trips.forEach(element =>{
-       vm.userInput1 = vm.userInput1.concat(`${element.origin}\n${element.destination}\n${element.delay !== undefined ? element.delay : new Date().toLocaleTimeString()}\n`);
-    });
-  }
+  //   vm.trips.forEach(element =>{
+  //      vm.userInput1 = vm.userInput1.concat(`${element.origin}\n${element.destination}\ndelay ${element.delay}\n`);
+  //   });
+  // }
 
   function clearValues() {
     vm.origin = "";
@@ -206,44 +205,8 @@ function MainCtrl($scope, NgMap) {
     vm.positions[index] = pos;
   }
 
-  vm.addTrip2 = function() {
-    var lines = vm.userInput2 ? vm.userInput2.split(/\r?\n/g) : [];
-
-    if (lines) {
-      for (var index = 0; index < lines.length;) {
-        var trip = {
-          origin: lines[index] ? lines[index++].trim() : "current-location",
-          destination: lines[index] ? lines[index++].trim() : "current-location",
-        };
-
-        vm.trips.push(trip);
-      }
-      clearValues();
-    }
-  };
-
   vm.startPathDemo = function () {
-    testGraphInit()
-      .then((graph) => {
-        getDijkstraPath()
-          .then((path) => {
-            let cars = [];
-            let numCars = 10;
-            let delay = 2000;
-            let interval = 1000;
-
-            for (let i = 0; i < numCars; i++) {
-              cars.push(new Car(vm.obliviousMap, path.path[0], path.path));
-              setTimeout(cars[i].start.bind(cars[i]), delay * i, interval);
-            }
-          })
-          .catch((err) => {
-            console.log(err);
-          });
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+   
   };
 
   function getDijkstraPath () {
@@ -254,13 +217,12 @@ function MainCtrl($scope, NgMap) {
         source: [],
         destination: []
       };
-      console.log('trips', vm.trips);
+
       vm.trips.forEach((trip) => {
         data.source.push(addressToIndex(trip.origin));
         data.destination.push(addressToIndex(trip.destination));
       });
-      // data.source = [15, 20, 50, 200];
-      // data.destination = [110, 110, 300, 10];
+
       console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
       request.post(`${domain}${apiUrl}${endpoint}`)
         .send(data)
@@ -272,7 +234,7 @@ function MainCtrl($scope, NgMap) {
           console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
           console.log(result);
           console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
-          return resolve(result);
+          return resolve(result.paths);
         });
     });
   }
