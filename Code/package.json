@@ -18,7 +18,7 @@
     "@google/maps": "^0.4.1",
     "@uirouter/angularjs": "^1.0.5",
     "angular": "^1.6.5",
-    "angular-auto-complete": "^1.4.2",
+    "angular-auto-complete": "https://github.com/redice44/angular-auto-complete.git#d80ebc4",
     "angular-sanitize": "^1.6.5",
     "body-parser": "^1.17.2",
     "dom-object": "https://github.com/redice44/dom-object.git#v0.0.7",
