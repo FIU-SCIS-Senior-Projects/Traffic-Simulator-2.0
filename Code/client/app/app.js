@@ -6,6 +6,9 @@ import Car from './car';
 require('@uirouter/angularjs');
 require('angular-auto-complete')
 
+const domain = 'http://localhost:8080/';
+const apiUrl = 'api/v2/'
+
 let app = angular
   .module('app', ['ui.router', require('ngmap'), require('angular-sanitize'), 'autoCompleteModule'])
   .controller("MainCtrl", MainCtrl);
@@ -16,6 +19,8 @@ let defaultTrip = {
   optimizeWaypoints: true,
   travelMode: 'DRIVING'
 };
+
+let graphInitialized = false;
 
 MainCtrl.$inject = ["$scope", "NgMap"];
 function MainCtrl($scope, NgMap) {
@@ -43,7 +48,17 @@ function MainCtrl($scope, NgMap) {
       .then(map => { vm.googleMap = map;})
       .catch(err => { console.log('Error: ', err); });
     NgMap.getMap("obliviousMap")
-      .then(map => { vm.obliviousMap = map; })
+      .then(map => { 
+        vm.obliviousMap = map;
+        // initiate graph on server
+        // Slowest part by far
+        request.post(`${domain}${apiUrl}graph`)
+          .end((err, asyncRes) => {
+            console.log(asyncRes);
+            graphInitialized = true;
+            // getDijkstraPath()
+          });
+      })
       .catch(err => { console.log('Error: ', err); });
   };
 
@@ -84,6 +99,20 @@ function MainCtrl($scope, NgMap) {
     // vm.trips.push(trip);
     
     setRoutes(vm.googleMap);
+    getDijkstraPath()
+      .then((data) => {
+        let cars = [];
+        let delay = 2000;
+        let interval = 1000;
+        data.paths.forEach((path) => {
+          cars.push(new Car(vm.obliviousMap, path.path[0], path.path));
+          setTimeout(cars[path.index].start.bind(cars[path.index]), delay * path.index, interval);
+        });
+        
+      })
+      .catch((err) => {
+        console.log('err', err);
+      })
 
     // clearValues();
     // printTrips();
@@ -156,7 +185,7 @@ function MainCtrl($scope, NgMap) {
     vm.userInput1 = "";
 
     vm.trips.forEach(element =>{
-       vm.userInput1 = vm.userInput1.concat(`${element.origin}, ${element.destination}, ${element.delay !== undefined ? element.delay : new Date().toLocaleTimeString()}\n`);
+       vm.userInput1 = vm.userInput1.concat(`${element.origin}\n${element.destination}\n${element.delay !== undefined ? element.delay : new Date().toLocaleTimeString()}\n`);
     });
   }
 
@@ -193,12 +222,10 @@ function MainCtrl($scope, NgMap) {
     }
   };
 
-  
-
   vm.startPathDemo = function () {
     testGraphInit()
       .then((graph) => {
-        testDijkstra()
+        getDijkstraPath()
           .then((path) => {
             let cars = [];
             let numCars = 10;
@@ -218,98 +245,46 @@ function MainCtrl($scope, NgMap) {
         console.log(err);
       });
   };
-}
-  function testDijkstra () {
-  const endpoint = 'path/dijkstra';
 
-  return new Promise((resolve, reject) => {
-    let data = {};
-    data.source = 15;
-    data.destination = 110;
-    console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
-    request.post(`${domain}${apiUrl}${endpoint}`)
-      .send(data)
-      .end((err, asyncRes) => {
-        if (err) {
-          return reject(err);
-        }
-        const result = JSON.parse(asyncRes.text);
-        console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
-        console.log(result);
-        console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
-        return resolve(result);
+  function getDijkstraPath () {
+    const endpoint = 'path/dijkstra';
+
+    return new Promise((resolve, reject) => {
+      let data = {
+        source: [],
+        destination: []
+      };
+      console.log('trips', vm.trips);
+      vm.trips.forEach((trip) => {
+        data.source.push(addressToIndex(trip.origin));
+        data.destination.push(addressToIndex(trip.destination));
       });
-  });
-}
+      // data.source = [15, 20, 50, 200];
+      // data.destination = [110, 110, 300, 10];
+      console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
+      request.post(`${domain}${apiUrl}${endpoint}`)
+        .send(data)
+        .end((err, asyncRes) => {
+          if (err) {
+            return reject(err);
+          }
+          const result = JSON.parse(asyncRes.text);
+          console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
+          console.log(result);
+          console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
+          return resolve(result);
+        });
+    });
+  }
 
-function testGraphInit () {
-  const endpoint = 'graph';
+  function addressToIndex (address) {
+    let i = 0;
+    let found = false;
+    while(i < dataset.length && !found) {
+      found = dataset[i].address === address;
+      i++;
+    }
 
-  return new Promise((resolve, reject) => {
-    testGeoJsonFormat()
-      .then((adjMatrix) => {
-        console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
-        request.post(`${domain}${apiUrl}${endpoint}`)
-          .send(adjMatrix)
-          .end((err, asyncRes) => {
-            if (err) {
-              return reject(err);
-            }
-            const result = JSON.parse(asyncRes.text);
-            console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
-            console.log(result);
-            console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
-            return resolve(result);
-          });
-      })
-      .catch((err) => {
-        return reject(err);
-      });
-  });
-}
-
-function testGeoJsonFormat () {
-  const endpoint = 'geo';
-
-  return new Promise((resolve, reject) => {
-    getGeoJson()
-      .then((geojson) => {
-        console.log(`[POST]: ${apiUrl}${endpoint} - Request`);
-        request.post(`${domain}${apiUrl}${endpoint}`)
-          .send(geojson)
-          .end((err, asyncRes) => {
-            if (err) {
-              return reject(err);
-            }
-            const result = JSON.parse(asyncRes.text);
-            console.log(`[POST]: ${apiUrl}${endpoint} - Response`);
-            console.log(result);
-            console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
-            return resolve(result);
-          });
-      })
-      .catch((err) => {
-        console.log('Error in testGeoJsonFormat', err);
-      });
-  });
-}
-
-// Temp endpoint to get geojson data for testing.
-function getGeoJson () {
-  const endpoint = 'geo/roads';
-
-  return new Promise((resolve, reject) => {
-    console.log(`[GET]: ${apiUrl}${endpoint} - Request`);
-    request.get(`${domain}${apiUrl}${endpoint}`)
-      .end((err, asyncRes) => {
-        if (err) {
-          return reject(err);
-        }
-        const result = JSON.parse(asyncRes.text);
-        console.log(`[GET]: ${apiUrl}${endpoint} - Response`);
-        console.log(result);
-        console.log(`[POST]: ${apiUrl}${endpoint} - End Response`);
-        return resolve(result);
-      });
-  });
+    return found ? i-1 : -1;
+  }
 }

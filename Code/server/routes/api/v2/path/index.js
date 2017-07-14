@@ -1,6 +1,6 @@
 const PythonShell = require('python-shell');
 
-function dijkstra (session, source, destination) {
+function dijkstra (session, source, destination, index) {
   return new Promise((resolve, reject) => {
     let pyshell = new PythonShell('./server/algo/graph/dijkstra.py');
     let pyResult = null;
@@ -43,7 +43,7 @@ function dijkstra (session, source, destination) {
         return i % 2 === 0;
       });
 
-      return resolve(pyResult);
+      return resolve({path: pyResult, index: index});
     });
   });
 }
