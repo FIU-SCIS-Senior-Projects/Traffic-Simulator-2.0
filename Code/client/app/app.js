@@ -28,7 +28,8 @@ function MainCtrl($scope, NgMap) {
     minimumChars: 1,
     data: function (term) {
       var match = dataset.filter(function (value) {
-        return term.length <= value.address.length && term.toLowerCase() === value.address.substr(0, term.length).toLowerCase();
+        // return term.length <= value.address.length && term.toLowerCase() === value.address.substr(0, term.length).toLowerCase();
+        return value.address.toLowerCase().includes(term.toLowerCase());
       });
       return match.map((data) => {
         return data.address;
@@ -51,9 +52,14 @@ function MainCtrl($scope, NgMap) {
         vm.obliviousMap = map;
         // initiate graph on server
         // Slowest part by far
+        // console.log(vm);
+        // console.log(vm.submitBtn);
+        let submitBtn = document.getElementById('submit-button');
         request.post(`${domain}${apiUrl}graph`)
           .end((err, asyncRes) => {
             console.log(asyncRes);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Submit';
           });
       })
       .catch(err => { console.log('Error: ', err); });
@@ -81,6 +87,9 @@ function MainCtrl($scope, NgMap) {
   function parseTrips () {
     let input = vm.userInput1.split('\n');
     console.log('inputs', input);
+    input = input.filter((data) => {
+      return data && data !== '';
+    });
     let trips = [];
     for(let i = 0; i < input.length; i+=3) {
       trips.push({
@@ -96,6 +105,10 @@ function MainCtrl($scope, NgMap) {
   vm.getRoutes = () => {
     // parse input box
     vm.trips = parseTrips();
+    let submitBtn = document.getElementById('submit-button');
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Processing...';
+
 
     let promises = [];
     promises.push(getGoogleNavigation());
@@ -104,6 +117,8 @@ function MainCtrl($scope, NgMap) {
     Promise.all(promises)
       .then((data) => {
         console.log('data', data);
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Submit';
         let googleCars = [];
         let obliviousCars = [];
         let delay = 1000;
