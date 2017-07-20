@@ -1,7 +1,7 @@
 <div>
     <h5 class="header"> Google map navigation</h5>
 </div>
-<ng-map id="googleMap" center="current-position" geo-fallback-center="[25.756, -80.375]">
+<ng-map id="googleMap" center="25.726,-80.355" zoom="11">
     
     <div ng-repeat="pos in vm.positions">
         <marker position="{{pos.lat}}, {{pos.lng}}" title="{{pos.title}}"></marker>
