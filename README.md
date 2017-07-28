@@ -7,7 +7,7 @@ Our project contains 5 main folders, and the directory structure is as follows:
   2.	Documentation- This folder contains the final project documentation file and the Daily scrum meeting file
   3.	Posters – Contains the team member’s posters 
   4.	PresentationSlides – Contains final slide presentation powerpoint
-  5.	Videos- This folder contains an index.html file that contains the links for the project Intro, UserGuide video, InstallMaintenanceGuide and the ShortCommingsWhishlist video.
+  5.	Videos- This folder contains an index.html file with the links for the project Intro, UserGuide, InstallMaintenanceGuide and the ShortCommingsWhishlist videos.
   
 
  Installation/Maintenance
