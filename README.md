@@ -1,6 +1,15 @@
 # Traffic-Simulator-2.0
 Traffic Simulator 2.0
 
+Our project contains 5 main folders, and the directory structure is as follows:
+
+  1.	Code- All the code for the project is contained in this folder
+  2.	Documentation- This folder contains the final project documentation file and the Daily scrum meeting file
+  3.	Posters – Contains the team member’s posters 
+  4.	PresentationSlides – Contains final slide presentation powerpoint
+  5.	Videos- This folder contains an index.html file that contains the links for the project Intro, UserGuide video, InstallMaintenanceGuide and the ShortCommingsWhishlist video.
+  
+
  Installation/Maintenance
 
  1. Install NodeJS v6+ from https://nodejs.org/en/
